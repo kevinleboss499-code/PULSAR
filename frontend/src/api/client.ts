@@ -22,7 +22,18 @@ export interface PulsarApi {
   updateRecommendation(astronautId: string, id: string, u: RecommendationUpdate): Promise<Recommendation>;
 }
 
-export const API_URL = (import.meta.env.VITE_API_URL || "http://localhost:8000").replace(/\/$/, "");
+/** API sur le même hôte que la page : localhost reste localhost, une IP (Wi-Fi) parle au serveur sur cette IP. */
+function apiBase(): string {
+  const configured = import.meta.env.VITE_API_URL;
+  if (configured) return configured.replace(/\/$/, "");
+  if (typeof window !== "undefined") {
+    const host = window.location.hostname;
+    if (host && host !== "localhost" && host !== "127.0.0.1") return `http://${host}:8000`;
+  }
+  return "http://localhost:8000";
+}
+
+export const API_URL = apiBase();
 export const USE_MOCK = import.meta.env.VITE_USE_MOCK === "true";
 
 export class ApiError extends Error { constructor(public status: number, message: string) { super(message); this.name = "ApiError"; } }
