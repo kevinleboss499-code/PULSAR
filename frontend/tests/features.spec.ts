@@ -1,12 +1,29 @@
 /* Parcours fonctionnels : page d’accueil, prédictions et solutions par rôle, gamification, son. */
 import { expect, test, type Page } from "@playwright/test";
+import { DEMO_USERS } from "../src/data/demo/users";
 
-async function login(page: Page, id: string, code: string) {
+const ROLE_BUTTON = { astronaute: /^Astronaute/, "medecin-bord": /^Médecin de bord/, nasa: /^NASA Houston/ } as const;
+const HOME = { astronaute: "/astronaute", "medecin-bord": "/medecin-bord", nasa: "/nasa" } as const;
+
+async function login(page: Page, id: string, _code: string) {
+  const u = DEMO_USERS.find((x) => x.id === id);
+  if (!u) throw new Error(id);
   await page.goto("/connexion");
-  await page.getByLabel("Identifiant personnel").fill(id);
-  await page.getByLabel("Code personnel", { exact: true }).fill(code);
-  await page.getByRole("button", { name: "Se connecter" }).click();
-  await page.waitForURL(/astronaute|medecin-bord|nasa/);
+  if (u.id === "AST-001" || u.id === "CMO-001" || u.id === "NASA-FS-001") {
+    await page.getByRole("button", { name: ROLE_BUTTON[u.role] }).click();
+  } else {
+    await page.evaluate((user) => {
+      const now = Date.now();
+      localStorage.setItem("pulsar.session", JSON.stringify({
+        user: { id: user.id, role: user.role, displayName: user.displayName, title: user.title, crewId: user.crewId },
+        token: "demo.test",
+        issuedAt: now,
+        expiresAt: now + 12 * 3600_000,
+      }));
+    }, u);
+    await page.goto(HOME[u.role]);
+  }
+  await page.waitForURL(new RegExp(HOME[u.role]));
 }
 
 test("page d’accueil publique : sections, CTA vers /connexion", async ({ page }) => {
@@ -17,7 +34,7 @@ test("page d’accueil publique : sections, CTA vers /connexion", async ({ page 
   await expect(page.getByRole("heading", { name: "Cinq dangers du vol spatial habité" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Ce dont vous avez besoin", level: 3 })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Du poignet à Houston" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Trois rôles, un identifiant" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Trois rôles, une interface" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Montre et constantes" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Vos constantes" })).toBeVisible();
   await page.getByRole("tab", { name: /Distance de la Terre/ }).click();

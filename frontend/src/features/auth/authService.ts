@@ -5,7 +5,8 @@
    Pour passer en production : implémenter HttpAuthService côté serveur (POST /auth/login, POST /auth/logout,
    GET /auth/me), supprimer src/data/demo/users.ts, et renvoyer un message d’erreur générique
    (« Identifiant ou code incorrect ») pour ne pas révéler quels identifiants existent. */
-import { DEMO_USERS } from "@/data/demo/users";
+import { DEMO_USERS, ROLE_ENTRY } from "@/data/demo/users";
+import type { Role } from "@/data/types";
 import { AuthError, type AuthUser, type Session } from "./types";
 import { roleFromId } from "./roles";
 
@@ -25,6 +26,12 @@ const LOCK_SECONDS = 30;
 export const normalizeId = (s: string) => s.trim().toUpperCase().replace(/\s+/g, "");
 
 function save(s: Session) { localStorage.setItem(SESSION_KEY, JSON.stringify(s)); }
+function issue(user: AuthUser): Session {
+  const now = Date.now();
+  const s: Session = { user, token: `demo.${crypto.randomUUID()}`, issuedAt: now, expiresAt: now + SESSION_HOURS * 3600_000 };
+  save(s);
+  return s;
+}
 function read(): Session | null {
   try {
     const s = JSON.parse(localStorage.getItem(SESSION_KEY) ?? "null") as Session | null;
@@ -57,11 +64,7 @@ export class DemoAuthService implements AuthService {
       throw new AuthError("BAD_CODE", `Code incorrect pour ${id}. (${rest} essai${rest > 1 ? "s" : ""} restant${rest > 1 ? "s" : ""})`);
     }
     this.fails = 0;
-    const user: AuthUser = { id: u.id, role, /* rôle déduit de l’identifiant */ displayName: u.displayName, title: u.title, crewId: u.crewId };
-    const now = Date.now();
-    const s: Session = { user, token: `demo.${crypto.randomUUID()}`, issuedAt: now, expiresAt: now + SESSION_HOURS * 3600_000 };
-    save(s);
-    return s;
+    return issue({ id: u.id, role, displayName: u.displayName, title: u.title, crewId: u.crewId });
   }
   async logout() { localStorage.removeItem(SESSION_KEY); }
   restore() { return read(); }
@@ -88,3 +91,12 @@ export class HttpAuthService implements AuthService {
 const API = import.meta.env.VITE_AUTH_API_URL as string | undefined;
 export const authService: AuthService = API ? new HttpAuthService(API) : new DemoAuthService();
 export const IS_DEMO_AUTH = !API;
+
+/** Ouvre l’interface d’un rôle sans identifiant ni code. Réservé à la démo. */
+export async function enterDemoRole(role: Role): Promise<Session> {
+  if (API) throw new AuthError("NETWORK", "Le choix de rôle n’est pas disponible avec l’authentification serveur.");
+  const u = DEMO_USERS.find((x) => x.id === ROLE_ENTRY[role] && x.role === role);
+  if (!u) throw new AuthError("UNKNOWN_ID", "Ce rôle n’a pas d’interface de démonstration.");
+  await delay(200);
+  return issue({ id: u.id, role, displayName: u.displayName, title: u.title, crewId: u.crewId });
+}

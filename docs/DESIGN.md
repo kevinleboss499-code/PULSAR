@@ -40,7 +40,7 @@ Le front a été refondu en **v7 clinique sombre** (coque plate, KPI strip, dash
 | 8 · Montre ronde — alerte rouge → médecin de bord | `71:1673` | [lancer](https://www.figma.com/proto/cj96CiSofo2y0mDSpre7J1/PULSAR-AHM-v6?node-id=71-1673&starting-point-node-id=71%3A1673) |
 | Index de tous les écrans | `36:4` | [ouvrir dans le fichier](https://www.figma.com/design/cj96CiSofo2y0mDSpre7J1/PULSAR-AHM-v6?node-id=36-4) |
 
-> L’écran **O01 · Choix du profil** de Figma est remplacé dans le code par **un seul écran d’accueil avec connexion par identifiant** (`/login` : logo, intro mission, photo, formulaire ; aucun choix de profil ni liste de comptes ; capture `docs/screens/projet-connexion.png`), qui redirige vers le tableau de bord du rôle. Le sélecteur de rôle du haut des maquettes devient l’**utilisateur connecté + bouton de déconnexion** (un utilisateur ne change pas de rôle).
+> L’écran **O01 · Choix du profil** est proposé sur `/` et `/connexion` : un bouton par rôle ouvre son interface de démo. Pas de formulaire identifiant + code, pas de liste de comptes. Le sélecteur de rôle du haut des maquettes devient l’**utilisateur connecté + bouton de déconnexion**.
 
 
 ## Astronaute — page Figma `1:3`

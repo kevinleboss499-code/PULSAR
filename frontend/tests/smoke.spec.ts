@@ -5,11 +5,27 @@ import { DEMO_USERS } from "../src/data/demo/users";
 const HOME = { astronaute: "/astronaute", "medecin-bord": "/medecin-bord", nasa: "/nasa" } as const;
 const HEADING = { astronaute: "Votre état aujourd’hui", "medecin-bord": "Surveillance équipage", nasa: "Bilan programmé · J127 · 3/4" } as const;
 
-async function login(page: Page, id: string, code: string) {
+const ROLE_BUTTON = { astronaute: /^Astronaute/, "medecin-bord": /^Médecin de bord/, nasa: /^NASA Houston/ } as const;
+
+async function login(page: Page, id: string, _code: string) {
+  const u = DEMO_USERS.find((x) => x.id === id);
+  if (!u) throw new Error(id);
   await page.goto("/connexion");
-  await page.getByLabel("Identifiant personnel").fill(id);
-  await page.getByLabel("Code personnel", { exact: true }).fill(code);
-  await page.getByRole("button", { name: "Se connecter" }).click();
+  if (u.id === "AST-001" || u.id === "CMO-001" || u.id === "NASA-FS-001") {
+    await page.getByRole("button", { name: ROLE_BUTTON[u.role] }).click();
+  } else {
+    await page.evaluate((user) => {
+      const now = Date.now();
+      localStorage.setItem("pulsar.session", JSON.stringify({
+        user: { id: user.id, role: user.role, displayName: user.displayName, title: user.title, crewId: user.crewId },
+        token: "demo.test",
+        issuedAt: now,
+        expiresAt: now + 12 * 3600_000,
+      }));
+    }, u);
+    await page.goto(HOME[u.role]);
+  }
+  await page.waitForURL(new RegExp(`${HOME[u.role]}`));
 }
 
 test("sans session, toute page protégée renvoie vers /connexion", async ({ page }) => {
@@ -66,14 +82,21 @@ test("médecin de bord : voit tout l’équipage et ouvre un dossier", async ({ 
   await expect(page.locator(".alert-list li").first()).toBeVisible();
 });
 
-test("accueil : un seul écran de connexion, sans choix de profil ni comptes de démo", async ({ page }) => {
+test("connexion : choix de rôle, sans identifiant ni code", async ({ page }) => {
   await page.goto("/login"); // ancienne adresse → /connexion
   await expect(page).toHaveURL(/\/connexion$/);
-  await expect(page.locator("#login-id")).toBeVisible();
-  await expect(page.locator("#login-code")).toBeVisible();
+  await expect(page.locator("#login-id")).toHaveCount(0);
+  await expect(page.locator("#login-code")).toHaveCount(0);
+  await expect(page.getByLabel("Identifiant personnel")).toHaveCount(0);
+  await expect(page.getByLabel("Code personnel")).toHaveCount(0);
   await expect(page.getByText(/Choix du profil|Comptes de démonstration/)).toHaveCount(0);
   for (const id of ["AST-001", "CMO-001", "NASA-FS-001"]) await expect(page.getByText(id, { exact: false })).toHaveCount(0);
-  await expect(page.locator("main button, form button")).toHaveCount(2); // afficher/masquer le code + valider
+  await expect(page.getByRole("button", { name: /^Astronaute/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Médecin de bord/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /^NASA Houston/ })).toBeVisible();
+  await page.getByRole("button", { name: /^Astronaute/ }).click();
+  await expect(page).toHaveURL(/\/astronaute$/);
+  await expect(page.locator(".r-user")).toContainText("Lina Kovacs");
 });
 
 test("NASA : liste des rapports et réponse", async ({ page }) => {
@@ -83,23 +106,3 @@ test("NASA : liste des rapports et réponse", async ({ page }) => {
   await expect(page).toHaveURL(/\/nasa\/reponse$/);
 });
 
-test("erreurs de connexion : vide, format, identifiant inconnu, code faux", async ({ page }) => {
-  await page.goto("/connexion");
-  const submit = page.getByRole("button", { name: "Se connecter" });
-  const err = page.locator("#login-error");
-  await submit.click();
-  await expect(err).toHaveAttribute("data-code", "EMPTY");
-  await page.getByLabel("Identifiant personnel").fill("lina");
-  await page.getByLabel("Code personnel", { exact: true }).fill("123456");
-  await submit.click();
-  await expect(err).toHaveAttribute("data-code", "BAD_FORMAT");
-  await page.getByLabel("Identifiant personnel").fill("AST-999");
-  await submit.click();
-  await expect(err).toHaveAttribute("data-code", "UNKNOWN_ID");
-  await page.getByLabel("Identifiant personnel").fill("ast-001");
-  await page.getByLabel("Code personnel", { exact: true }).fill("000000");
-  await submit.click();
-  await expect(err).toHaveAttribute("data-code", "BAD_CODE");
-  await expect(page.getByLabel("Code personnel", { exact: true })).toHaveAttribute("aria-invalid", "true");
-  await expect(page).toHaveURL(/\/connexion$/);
-});

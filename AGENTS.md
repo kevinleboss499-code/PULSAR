@@ -37,7 +37,7 @@ Garde : `RequireRole`. Auth : `authService.ts` (interface `AuthService` ; `DemoA
 Avant de terminer une tâche : `npm run typecheck` et `npm run test:e2e` doivent passer.
 
 ## Ne pas faire
-- Ne pas réintroduire d’écran « Choix du profil », de sélecteur de rôle ni de liste de comptes de démo dans l’UI : un seul écran d’accueil + connexion, rôle déduit de l’identifiant (`roleFromId`).
+- Le choix de rôle (accueil et `/connexion`) ouvre l’interface de démo, un compte canonique par rôle (`ROLE_ENTRY`). Pas de formulaire identifiant + code, pas de liste de comptes.
 - Ne pas écrire de code backend dans ce dépôt (seulement le contrat dans `docs/API-CONTRACT.md`).
 - Ne pas mettre de vrai secret, de vraie donnée médicale ou de clé d’API dans le front.
 - Gamification : jamais basée sur une valeur de santé, jamais de classement ni de comparaison entre membres, toujours désactivable (EF-42/43/44).

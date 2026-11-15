@@ -17,6 +17,13 @@ export type DemoUser = {
   crewId?: string;
 };
 
+/** Compte canonique ouvert quand on choisit un rôle, sans identifiant ni code. */
+export const ROLE_ENTRY: Record<Role, string> = {
+  astronaute: "AST-001",
+  "medecin-bord": "CMO-001",
+  nasa: "NASA-FS-001",
+};
+
 export const DEMO_USERS: DemoUser[] = [
   { id: "AST-001", code: "482105", role: "astronaute", displayName: "Lina Kovacs", title: "Ingénieure de vol", crewId: "LK" },
   { id: "AST-002", code: "130742", role: "astronaute", displayName: "Alex Morgan", title: "Commandant", crewId: "AM" },

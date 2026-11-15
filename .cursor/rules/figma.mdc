@@ -72,7 +72,7 @@ alwaysApply: false
 - 8 · Montre ronde — alerte rouge → médecin de bord : https://www.figma.com/proto/cj96CiSofo2y0mDSpre7J1/PULSAR-AHM-v6?node-id=71-1673&starting-point-node-id=71%3A1673
 
 ## Écarts voulus entre Figma et le code
-- O01 « Choix du profil » → **supprimé** ; remplacé par l’écran de connexion unique `/connexion` (précédé de la page d’accueil publique `/`, hors Figma) (logo, intro, photo, identifiant personnel + code). Rôle déduit de l’identifiant, aucun sélecteur ni liste de comptes dans l’UI.
+- O01 « Choix du profil » → proposé sur `/` et `/connexion` : un bouton par rôle ouvre son interface de démo. Pas de formulaire identifiant + code, pas de liste de comptes.
 - Icônes : Figma utilise Material Symbols ; le code utilise **lucide-react** (équivalent le plus proche, table `ICONS` de `components/ui/Icon.tsx`).
 - Courbes : tracés Figma statiques → **Recharts** alimentés par `src/api` (simulateur tant que le backend n’existe pas).
 - Sélecteur de rôle du haut (Astronaute / Médecin de bord / NASA Houston) → remplacé par l’utilisateur connecté + déconnexion (`app/RoleLayout.tsx`).

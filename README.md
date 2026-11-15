@@ -9,7 +9,7 @@ Three dashboards, one per role, plus a watch:
 | **Crew surgeon** | medical tablet / sickbay display + ultrasound probe | `/medecin-bord` — the whole crew |
 | **NASA physicians (Houston)** | Mission Control Center workstations | `/nasa` — reports received over the satellite link |
 
-The app opens on a **public home page** (`/`: what PULSAR is, HRP hazards, how data moves, an interactive demo). “Sign in” leads to the **single sign-in screen** `/connexion` (logo, short mission intro, a photo of Earth from the ISS, the form). Each person enters **their personal identifier** and code. The role is inferred from the identifier (`AST-…`, `CMO-…`, `NASA-FS-…`) and they land on their own dashboard. There is **no “Choose a profile” screen and no account list** in the interface.
+The app opens on a **public home page** (`/`: what PULSAR is, HRP hazards, how data moves, an interactive demo). Each role card, and the screen `/connexion`, offers **Enter by role**: Astronaut, Crew surgeon, or Houston opens that interface. There is no identifier or code form, and account codes are not listed on the screen.
 
 This repository holds the **front end** (`frontend/`) and the **ship server** (`backend/`, FastAPI). Heart-rate forecasts are computed by **XGBoost, an LSTM, and Prophet** on the demo series (`GET /predictions/{id}` and `GET /heart-rate/live`). The other metrics stay a demo scenario. This is decision support, not a diagnosis. If the API does not answer, the front end falls back to its simulator. The NASA key never reaches the browser: the space-weather card calls `GET /reference/space-weather`.
 

@@ -2,15 +2,16 @@
    L’IP vient de l’environnement du serveur de dev, jamais du navigateur. */
 
 const IPV4 = /^(?:\d{1,3}\.){3}\d{1,3}$/;
+const DEFAULT_IP = "192.168.137.11";
 
 export function buzzerIp(raw: string | undefined): string {
-  const ip = (raw ?? "").trim() || "192.168.137.232";
-  if (!IPV4.test(ip)) return "192.168.137.232";
+  const ip = (raw ?? "").trim() || DEFAULT_IP;
+  if (!IPV4.test(ip)) return DEFAULT_IP;
   const ok = ip.split(".").every((part) => {
     const n = Number(part);
     return n >= 0 && n <= 255 && String(n) === part;
   });
-  return ok ? ip : "192.168.137.232";
+  return ok ? ip : DEFAULT_IP;
 }
 
 /** Salve : plusieurs POST /bip d’affilée. Le firmware n’a pas de volume, la répétition porte plus fort. */

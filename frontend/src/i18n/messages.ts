@@ -21,6 +21,10 @@ export type AppMessages = {
     back: string;
     h1: string;
     lead: string;
+    rolesLabel: string;
+    rolesLead: string;
+    roleDevice: Record<Role, string>;
+    protocol: string;
     loggedOut: string;
     idLabel: string;
     idHelp: (role: string) => string;
@@ -69,7 +73,15 @@ const fr: AppMessages = {
     titleDoc: "PULSAR · Connexion",
     back: "Découvrir PULSAR",
     h1: "Votre santé,\nsuivie en mission.",
-    lead: "Identifiant et code personnels : vous arrivez sur le tableau de bord de votre rôle.",
+    lead: "Choisissez un rôle pour ouvrir son interface.",
+    rolesLabel: "Entrer par rôle",
+    rolesLead: "La revue NASA n’utilise pas le protocole de connexion.",
+    roleDevice: {
+      astronaute: "Tablette, montre et kits",
+      "medecin-bord": "Tablette médicale",
+      nasa: "Mission Control",
+    },
+    protocol: "Protocole de bord",
     loggedOut: "Vous êtes déconnecté.",
     idLabel: "Identifiant personnel",
     idHelp: (r) => `Espace : ${r}`,
@@ -108,7 +120,7 @@ const fr: AppMessages = {
     },
     roles: {
       ...LANDING.fr.roles,
-      title: "Trois rôles,\nun identifiant",
+      title: "Trois rôles,\nune interface",
     },
     demo: {
       ...LANDING.fr.demo,
@@ -143,7 +155,15 @@ const en: AppMessages = {
     titleDoc: "PULSAR · Sign in",
     back: "Discover PULSAR",
     h1: "Your health,\ntracked on mission.",
-    lead: "Personal ID and code: you land on the dashboard for your role.",
+    lead: "Choose a role to open its interface.",
+    rolesLabel: "Enter by role",
+    rolesLead: "The NASA review does not use the sign-in protocol.",
+    roleDevice: {
+      astronaute: "Tablet, watch and kits",
+      "medecin-bord": "Medical tablet",
+      nasa: "Mission Control",
+    },
+    protocol: "Onboard protocol",
     loggedOut: "You are signed out.",
     idLabel: "Personal ID",
     idHelp: (r) => `Space: ${r}`,
@@ -182,7 +202,7 @@ const en: AppMessages = {
     },
     roles: {
       ...LANDING.en.roles,
-      title: "Three roles,\none ID",
+      title: "Three roles,\none interface",
     },
     demo: {
       ...LANDING.en.demo,

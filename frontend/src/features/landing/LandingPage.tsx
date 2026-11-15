@@ -1,12 +1,14 @@
 /* Landing « / » — rythme SPACE STRO : scène inscrite, hero, sections FR/EN. */
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
-import { Link } from "react-router";
+import { Link, Navigate } from "react-router";
 import { motion, useInView, useReducedMotion, useScroll, useTransform } from "motion/react";
 import { Line, LineChart, ResponsiveContainer, YAxis } from "recharts";
 import { Icon, Logo, ThemeToggle, useTheme } from "@/components/ui";
 import { mockApi } from "@/api/mock";
 import type { TelemetrySample } from "@/api";
+import type { Role } from "@/data/types";
 import { useAuth } from "@/features/auth/AuthProvider";
+import { IS_DEMO_AUTH } from "@/features/auth/authService";
 import { homeFor } from "@/features/auth/roles";
 import { LangToggle, useLang } from "@/i18n";
 import { LandingIntro } from "./LandingIntro";
@@ -123,7 +125,9 @@ function LivePanel({ live, foot }: { live: string; foot: string }) {
 }
 
 export default function LandingPage() {
-  const { user } = useAuth();
+  const { user, enterRole } = useAuth();
+  const [entering, setEntering] = useState<Role | null>(null);
+  const [entered, setEntered] = useState(false);
   const { theme } = useTheme();
   const calm = !!useReducedMotion();
   const hero = useRef<HTMLElement>(null);
@@ -136,6 +140,16 @@ export default function LandingPage() {
   const { lang, t: app } = useLang();
   const t = app.landing;
   const endIntro = useCallback(() => setIntro(false), []);
+  async function openRole(role: Role) {
+    setEntering(role);
+    try {
+      await enterRole(role);
+      setEntered(true);
+    } finally {
+      setEntering(null);
+    }
+  }
+
   const cta = user
     ? { to: homeFor(user.role), label: t.ctaSpace }
     : { to: "/connexion", label: t.ctaLogin };
@@ -158,6 +172,8 @@ export default function LandingPage() {
           animate: { opacity: 1, y: 0 },
           transition: { duration: 0.5, delay, ease },
         };
+
+  if (entered && user) return <Navigate to={homeFor(user.role)} replace />;
 
   return (
     <div className="lp" lang={lang}>
@@ -313,11 +329,23 @@ export default function LandingPage() {
             />
             <ul className="lp-roles">
               {t.roles.items.map((r, i) => (
-                <motion.li key={r.title} className="lp-lift" {...reveal(calm, i * 0.07)}>
+                <motion.li key={r.role} className="lp-lift" {...reveal(calm, i * 0.07)}>
                   <span className="lp-roles-id">{r.idHint}</span>
                   <h3>{r.title}</h3>
                   <p className="lp-roles-dev">{r.device}</p>
                   <p>{r.access}</p>
+                  {IS_DEMO_AUTH && (
+                    <button
+                      type="button"
+                      className="btn btn-secondary lp-role-enter"
+                      aria-label={`${r.enter} ${r.title}`}
+                      disabled={entering !== null}
+                      aria-busy={entering === r.role}
+                      onClick={() => openRole(r.role)}
+                    >
+                      {r.enter} <Icon name="arrow_forward" size={16} />
+                    </button>
+                  )}
                 </motion.li>
               ))}
             </ul>

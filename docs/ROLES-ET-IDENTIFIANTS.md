@@ -23,7 +23,7 @@ Nolan Okafor a deux identifiants : `AST-003` (son espace personnel d’astronaut
 - **NASA Houston** : rapports reçus par liaison satellite, détail, recommandation (file montante), fenêtres de liaison.
 
 ## Règles de connexion
-- Page d’accueil publique `/` (bouton « Se connecter »), puis **un seul écran de connexion** (`/connexion`, `/login` y redirige) avec le formulaire identifiant + code. Pas d’écran « Choix du profil », pas de liste ni de boutons de comptes de démo dans l’interface : ces identifiants ne figurent que dans ce document et le README.
+- Page d’accueil publique `/`, puis l’écran `/connexion` (`/login` y redirige). Trois boutons de rôle ouvrent l’interface de démo (Astronaute → AST-001, Médecin de bord → CMO-001, NASA Houston → NASA-FS-001). Pas de formulaire identifiant + code. Les codes ne figurent que dans ce document et le README.
 - Le **rôle est déduit du préfixe** de l’identifiant (`roleFromId` dans `features/auth/roles.ts`) : `AST-` → astronaute, `CMO-` → médecin de bord, `NASA-FS-` → NASA Houston ; redirection automatique vers le tableau de bord correspondant.
 - Données temps réel : l’identifiant de connexion est relié au code équipage utilisé par l’API (`crewId`) : AST-001 → `LK`, AST-002 → `AM`, AST-003 → `NO`, AST-004 → `SR`, CMO-001 → `NO`.
 - Format : `AST-000`, `CMO-000`, `NASA-FS-000` (majuscules automatiques, espaces ignorés). Code : 6 chiffres.

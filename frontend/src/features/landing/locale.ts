@@ -30,7 +30,7 @@ export type LandingCopy = {
     eyebrow: string;
     title: string;
     sub: string;
-    items: { title: string; device: string; access: string; idHint: string }[];
+    items: { role: "astronaute" | "medecin-bord" | "nasa"; title: string; device: string; access: string; idHint: string; enter: string }[];
   };
   demo: { eyebrow: string; title: string; sub: string; live: string; foot: string };
   next: { eyebrow: string; title: string; text: string };
@@ -97,12 +97,12 @@ const fr: LandingCopy = {
   },
   roles: {
     eyebrow: "Rôle",
-    title: "Trois rôles, un identifiant",
-    sub: "Pas de menu « choisir mon profil ». Votre badge (AST-…, CMO-… ou NASA-FS-…) ouvre le bon espace.",
+    title: "Trois rôles, une interface",
+    sub: "Sans protocole de connexion : choisissez un rôle pour ouvrir son interface.",
     items: [
-      { title: "Astronaute", device: "Tablette + montre + kits", access: "Voit uniquement ses propres données.", idHint: "AST-…" },
-      { title: "Médecin de bord", device: "Tablette médicale", access: "Voit tout l’équipage, valide les actions.", idHint: "CMO-…" },
-      { title: "NASA Houston", device: "Mission Control", access: "Reçoit les rapports à chaque liaison.", idHint: "NASA-FS-…" },
+      { role: "astronaute", title: "Astronaute", device: "Tablette + montre + kits", access: "Voit uniquement ses propres données.", idHint: "AST-…", enter: "Ouvrir l’interface" },
+      { role: "medecin-bord", title: "Médecin de bord", device: "Tablette médicale", access: "Voit tout l’équipage, valide les actions.", idHint: "CMO-…", enter: "Ouvrir l’interface" },
+      { role: "nasa", title: "NASA Houston", device: "Mission Control", access: "Reçoit les rapports à chaque liaison.", idHint: "NASA-FS-…", enter: "Ouvrir l’interface" },
     ],
   },
   demo: {
@@ -115,7 +115,7 @@ const fr: LandingCopy = {
   next: {
     eyebrow: "Ensuite",
     title: "Entrer dans votre espace",
-    text: "Identifiant + code personnel. Vous arrivez directement sur le tableau de bord de votre rôle.",
+    text: "Choisissez un rôle. Son interface s’ouvre aussitôt.",
   },
   footLogin: "Connexion",
 };
@@ -180,12 +180,12 @@ const en: LandingCopy = {
   },
   roles: {
     eyebrow: "Role",
-    title: "Three roles, one ID",
-    sub: "No “pick my profile” menu. Your badge (AST-…, CMO-… or NASA-FS-…) opens the right space.",
+    title: "Three roles, one interface",
+    sub: "No sign-in protocol: choose a role to open its interface.",
     items: [
-      { title: "Astronaut", device: "Tablet + watch + kits", access: "Sees only their own data.", idHint: "AST-…" },
-      { title: "Crew surgeon", device: "Medical tablet", access: "Sees the whole crew, validates actions.", idHint: "CMO-…" },
-      { title: "NASA Houston", device: "Mission Control", access: "Receives reports each contact.", idHint: "NASA-FS-…" },
+      { role: "astronaute", title: "Astronaut", device: "Tablet + watch + kits", access: "Sees only their own data.", idHint: "AST-…", enter: "Open this interface" },
+      { role: "medecin-bord", title: "Crew surgeon", device: "Medical tablet", access: "Sees the whole crew, validates actions.", idHint: "CMO-…", enter: "Open this interface" },
+      { role: "nasa", title: "NASA Houston", device: "Mission Control", access: "Receives reports each contact.", idHint: "NASA-FS-…", enter: "Open this interface" },
     ],
   },
   demo: {
@@ -198,7 +198,7 @@ const en: LandingCopy = {
   next: {
     eyebrow: "Next",
     title: "Enter your space",
-    text: "Personal ID + code. You land on the dashboard for your role.",
+    text: "Choose a role. Its interface opens at once.",
   },
   footLogin: "Sign in",
 };
