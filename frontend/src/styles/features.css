@@ -370,9 +370,12 @@
 
 /* ── montre appairage + symptômes ── */
 .watch-pair.is-inactive, .is-inactive .r-card, .r-card.is-inactive { opacity: .72; }
-.watch-scan-list { display: grid; gap: 8px; margin: var(--s3) 0; }
+.ble-panel { display: grid; gap: var(--s3); }
+.watch-scan-list { display: grid; gap: 8px; margin: var(--s3) 0; max-height: 420px; overflow: auto; }
+.ble-panel .watch-scan-list { margin: 0; }
 .watch-scan-list li { display: flex; justify-content: space-between; gap: var(--s3); align-items: center; min-height: 48px; padding: 8px 10px; border: 1px solid var(--line); border-radius: var(--radius); }
-.watch-scan-list li span { display: inline-flex; gap: 8px; align-items: center; }
+.watch-scan-list li span { display: inline-flex; gap: 8px; align-items: center; flex-wrap: wrap; min-width: 0; }
+.watch-scan-list li b { font-weight: 600; overflow-wrap: anywhere; }
 .symptom-presets { flex-wrap: wrap; margin-bottom: var(--s3); }
 .symptom-log { display: grid; gap: 4px; margin: var(--s3) 0; font-size: .8125rem; color: var(--text-2); }
 .symptom-log li { display: flex; gap: 8px; align-items: flex-start; }

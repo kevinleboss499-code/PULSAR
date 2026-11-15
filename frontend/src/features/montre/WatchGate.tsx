@@ -31,7 +31,8 @@ function WatchGate({ w }: { w: WatchApi }) {
             <motion.div key="idle" className="watch-gate-copy" initial={enter} animate={{ opacity: 1, y: 0 }} exit={reduce ? undefined : { opacity: 0 }} transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}>
               <Icon name="watch" size={28} />
               <h1 id="watch-gate-title">Rien de connecté</h1>
-              <p>Activez le Bluetooth. L’application cherche ensuite une montre à proximité.</p>
+              <p>{w.radioPending ? "Vérification du Bluetooth de cet ordinateur…" : w.liveRadio ? "La radio Bluetooth de cet ordinateur s’allume et liste les appareils réellement à portée." : "Activez le Bluetooth. L’application cherche ensuite une montre à proximité."}</p>
+              {w.error && <p role="alert">{w.error}</p>}
               <button type="button" className="btn btn-primary" onClick={w.enableBluetooth} data-testid="watch-connect">
                 <Icon name="bluetooth" size={18} /> Activer le Bluetooth
               </button>
@@ -41,18 +42,19 @@ function WatchGate({ w }: { w: WatchApi }) {
             <motion.div key="scan" className="watch-gate-copy" role="status" aria-live="polite" initial={enter} animate={{ opacity: 1, y: 0 }} exit={reduce ? undefined : { opacity: 0 }} transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}>
               <span className="bt-ring" aria-hidden="true" />
               <h1 id="watch-gate-title">{w.state === "enabling" ? "Activation du Bluetooth" : "Recherche"}</h1>
-              <p>{w.state === "enabling" ? "Bluetooth en cours d’activation…" : "Bluetooth activé. Recherche des montres à proximité."}</p>
+              <p>{w.liveRadio ? (w.state === "enabling" ? "Allumage du Bluetooth, puis recherche des appareils à portée." : "Recherche en cours. Les appareils s’affichent dès qu’ils répondent.") : w.state === "enabling" ? "Bluetooth en cours d’activation…" : "Bluetooth activé. Recherche des montres à proximité."}</p>
+              {w.error && <p role="alert">{w.error}</p>}
               <button type="button" className="btn btn-ghost sm" onClick={w.cancelScan}>Annuler</button>
             </motion.div>
           )}
           {found && (
             <motion.div key="found" className="watch-gate-copy" role="status" aria-live="polite" initial={enter} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}>
-              <h1 id="watch-gate-title">Montre détectée</h1>
+              <h1 id="watch-gate-title">{w.liveRadio ? "Appareils à portée" : "Montre détectée"}</h1>
               <p>Choisissez l’appareil, puis la synchro s’ouvre.</p>
               <ul className="watch-scan-list">
                 {w.nearby.map((n, i) => (
-                  <motion.li key={n.id} initial={reduce ? false : { opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.28, delay: reduce ? 0 : i * 0.06 }}>
-                    <span><Icon name="watch" size={18} /><b>{n.name}</b><Demo /></span>
+                  <motion.li key={n.id} initial={reduce ? false : { opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.28, delay: reduce ? 0 : Math.min(i, 8) * 0.04 }}>
+                    <span><Icon name={n.live ? "bluetooth" : "watch"} size={18} /><b className={n.live && n.name === n.id ? "mono" : undefined}>{n.name}</b>{n.live && n.rssi !== 0 && <span className="mono">{n.rssi} dBm</span>}{n.live ? <span className="chip ok">Réel</span> : <Demo />}</span>
                     <button type="button" className="btn btn-primary sm" onClick={() => w.pair(n)}>Connecter</button>
                   </motion.li>
                 ))}

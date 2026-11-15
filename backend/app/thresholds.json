@@ -1,0 +1,14 @@
+{
+  "note": "Valeurs indicatives (cahier des charges §7 et §8). Pas un diagnostic. À valider par un médecin. Le serveur les lit ici ; le front reprend les mêmes nombres dans frontend/src/data/thresholds.ts.",
+  "heart_rate": { "unit": "bpm", "direction": "above", "orange": 100, "rouge": 120, "source": "CDC : 60 à 100 au repos. Attention dès 100, alerte dès 120." },
+  "spo2": { "unit": "%", "direction": "below", "orange": 94, "rouge": 92, "source": "CDC : 95 à 100. Attention si 94 ou moins, alerte si 92 ou moins." },
+  "bp_systolic": { "unit": "mmHg", "direction": "above", "orange": 130, "rouge": 160, "source": "AHA : normale < 120. Attention dès 130, alerte dès 160." },
+  "bp_diastolic": { "unit": "mmHg", "direction": "above", "orange": 85, "rouge": 100 },
+  "glucose_fasting": { "unit": "mg/dL", "orange_high": 99, "rouge_high": 126, "orange_low": 70, "rouge_low": 54, "source": "CDC : à jeun 70 à 99. Moins de 70 = trop basse." },
+  "glucose_postprandial": { "unit": "mg/dL", "orange_high": 140, "rouge_high": 180, "orange_low": 70, "rouge_low": 54 },
+  "glucose_forecast": { "unit": "mg/dL", "direction": "above", "orange": 126, "rouge": 180, "source": "Prévisions sans contexte de repas : côté haut seulement." },
+  "temperature": { "unit": "C", "orange_high": 37.5, "rouge_high": 38, "orange_low": 36.1, "rouge_low": 35, "source": "CDC : environ 36,1 à 37,2. Fièvre à partir de 38." },
+  "sleep": { "unit": "h", "direction": "below", "orange": 6, "rouge": 5, "cdc_nominal_hours": 7, "source": "CDC : 7 h ou plus. Attention sous 6 h, alerte à 5 h ou moins (nuits courtes, §8)." },
+  "mood": { "unit": "score", "min": 1, "max": 5, "direction": "below", "orange": 2, "rouge": 1, "source": "Pas de norme : comparaison indicative avec l’habitude de la personne." },
+  "radiation_dose_rate": { "unit": "uSv/h", "direction": "above", "orange": 40, "rouge": 100, "source": "Hors des 6 indicateurs du défi. Déjà utilisé par le dosimètre de démo." }
+}

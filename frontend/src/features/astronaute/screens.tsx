@@ -19,23 +19,30 @@ import { useSound } from "@/features/sound";
 import { GameIcon } from "@/features/gamification/glyphs";
 import { LiveVitalsChart, RadiationChart } from "@/components/charts";
 import { DataTag } from "@/app/DataSource";
+import { hasWebBluetooth } from "@/features/ble/gatt";
+import { useBleReading } from "@/features/ble/store";
+import { BleConnect } from "@/features/ble/BleConnect";
+import { SpaceWeatherCard } from "@/features/reference/SpaceWeather";
 import { ConductorProvider, TimeConductor } from "@/components/telemetry";
 import type { Go } from "@/app/types";
+import { bpLights, glucoseLight, heartRateLight, moodLight, sleepLight, spo2Light, temperatureLight, THRESHOLDS as TH } from "@/data/thresholds";
+import { useLang } from "@/i18n";
 
 /** Accueil A01 — télémétrie SaaS clinique : vitaux + corps 3D + aide + frise + donut régularité. */
 export function AstroHome({ go }: { go: Go }) {
+  const { t } = useLang();
   const ME = useMe();
   const gamif = useGamification(ME.id);
   const tel = useTelemetry(ME.id, { limit: 24, intervalMs: 2000 });
   const last = tel.data?.[tel.data.length - 1];
   const hr = last?.heartRate ?? ME.hr;
   const spo2 = last ? Math.round(last.spo2) : ME.spo2;
-  const hrLight = hr >= 110 ? "warning" as const : hr >= 90 ? "caution" as const : "ok" as const;
-  const spo2Light = spo2 <= 92 ? "warning" as const : spo2 < 95 ? "caution" as const : "ok" as const;
+  const hrLight = heartRateLight(hr);
+  const spo2State = spo2Light(spo2);
   const sleepH = parseSleepHours(ME.sleep);
-  const sleepLight = sleepH <= 5 ? "warning" as const : sleepH < 6 ? "caution" as const : "ok" as const;
+  const sleepState = sleepLight(sleepH);
   const sys = Number(ME.bp.split("/")[0]) || 120;
-  const bpLight = sys >= 140 ? "warning" as const : sys >= 130 ? "caution" as const : "ok" as const;
+  const bpState = bpLights(sys, Number(ME.bp.split("/")[1]) || 80);
   const cautionHr = hrLight !== "ok";
   const zones = statesFor(ME.light);
   const body = useZoneZoom(zones, cautionHr ? "heart" : "");
@@ -46,7 +53,7 @@ export function AstroHome({ go }: { go: Go }) {
     <div className="a01 a01--clinic a01--saas">
       <section className="ops-board" aria-label="Tableau de bord personnel">
         <header className="ops-head">
-          <h1>Votre état aujourd’hui</h1>
+          <h1>{t.dash.astro}</h1>
           <div className="ops-head-side">
             <Lamp l={ME.light} />
             <CrewPhotoButton crewId={ME.id} compact />
@@ -68,10 +75,10 @@ export function AstroHome({ go }: { go: Go }) {
 
         <div className="ops-split a01-dial-row" aria-label="Constantes">
           <HudDial label="Pouls" value={hr} unit="bpm" pct={hr / 130} light={hrLight} delta={cautionHr ? "+12 / 3 j" : "stable"} onSelect={() => go("/astronaute/silhouette")} />
-          <HudDial label="SpO₂" value={spo2} unit="%" pct={spo2 / 100} light={spo2Light} delta={spo2Light === "ok" ? "nominal" : "bas"} onSelect={() => go("/astronaute/silhouette")} />
-          <HudDial label="Temp." value={ME.temp} unit="°C" pct={0.55} light="ok" delta="nominal" onSelect={() => go("/astronaute/silhouette")} />
-          <HudDial label="Tension" value={ME.bp} unit="mmHg" pct={sys / 180} light={bpLight} delta={bpLight === "ok" ? "ok" : "élevée"} onSelect={() => go("/astronaute/kits")} />
-          <HudDial label="Sommeil" value={ME.sleep} pct={sleepH / 9} light={sleepLight} delta={sleepLight === "ok" ? "ok" : "court"} onSelect={() => go("/astronaute/bien-etre")} />
+          <HudDial label="SpO₂" value={spo2} unit="%" pct={spo2 / 100} light={spo2State} delta={spo2State === "ok" ? "nominal" : "bas"} onSelect={() => go("/astronaute/silhouette")} />
+          <HudDial label="Temp." value={ME.temp} unit="°C" pct={0.55} light="ok" delta="nominal" onSelect={() => go("/astronaute/kits")} />
+          <HudDial label="Tension" value={ME.bp} unit="mmHg" pct={sys / 180} light={bpState} delta={bpState === "ok" ? "ok" : "élevée"} onSelect={() => go("/astronaute/kits")} />
+          <HudDial label="Sommeil" value={ME.sleep} pct={sleepH / 9} light={sleepState} delta={sleepState === "ok" ? "ok" : "court"} onSelect={() => go("/astronaute/bien-etre")} />
         </div>
 
         <div className="ops-split a01-ops-main">
@@ -115,9 +122,9 @@ export function AstroHome({ go }: { go: Go }) {
               }]),
               {
                 id: "sleep",
-                light: sleepLight,
-                title: sleepLight === "ok" ? "Sommeil nominal" : "Sommeil court",
-                detail: `${ME.sleep} · objectif cabine ≥ 6 h.`,
+                light: sleepState,
+                title: sleepState === "ok" ? "Sommeil nominal" : "Sommeil court",
+                detail: `${ME.sleep} · indicatif CDC ≥ 7 h · attention sous ${TH.sleep.orange} h.`,
                 meta: "Routine bien-être",
               },
             ]}
@@ -225,6 +232,8 @@ export function AstroKits() {
   const [sys, setSys] = useState(128);
   const [dia, setDia] = useState(82);
   const [pulse, setPulse] = useState(92);
+  const reading = useBleReading();
+  const liveRadio = hasWebBluetooth();
   const record = (mission: string, text: string, light: "ok" | "caution" | "warning") => {
     pushBoard({ who: ME.id, text, light });
     const fresh = gami.enabled && gami.markDone(mission);
@@ -232,7 +241,15 @@ export function AstroKits() {
     notifyOk("Mesure enregistrée", fresh ? "Notée dans le journal médical. Régularité du jour mise à jour." : "Notée dans le journal médical de cet appareil.");
   };
   useEffect(() => {
-    if (src !== "bt") return;
+    if (!reading) return;
+    if (reading.glucoseMgDl != null) setGlu(String(reading.glucoseMgDl));
+    if (reading.systolic != null) setSys(reading.systolic);
+    if (reading.diastolic != null) setDia(reading.diastolic);
+    if (reading.pulse != null) setPulse(reading.pulse);
+    else if (reading.heartRate != null) setPulse(reading.heartRate);
+  }, [reading]);
+  useEffect(() => {
+    if (src !== "bt" || liveRadio || reading) return;
     const tick = () => {
       setSys(wobble(128, 6, 12));
       setDia(wobble(82, 4, 15));
@@ -241,25 +258,27 @@ export function AstroKits() {
     tick();
     const id = window.setInterval(tick, 2000);
     return () => window.clearInterval(id);
-  }, [src]);
+  }, [src, liveRadio, reading]);
   const g = Number(glu);
   const fasting = meal === "jeun";
-  const gluHigh = fasting ? 126 : 180;
-  const gluCaution = fasting ? 100 : 140;
+  const gluBand = fasting ? TH.glucose_fasting : TH.glucose_post;
+  const gluHigh = gluBand.rougeHigh;
+  const gluCaution = gluBand.orangeHigh;
   const gluWord = !g ? "Saisissez la valeur affichée sur le lecteur."
-    : g < 54 ? "Très basse — 15 g de sucre, prévenez le médecin."
-    : g < 70 ? "Basse — 15 g de sucre, remesurez dans 15 min."
-    : g > gluHigh ? "Haute — remesurez, puis prévenez le médecin."
-    : g > gluCaution ? (fasting ? "Au-dessus de la plage à jeun (70–100)." : "Au-dessus de la plage après repas (70–140).")
-    : fasting ? "Dans la plage à jeun (70–100)." : "Dans la plage après repas (70–140).";
-  const gluLight = !g || (g >= 70 && g <= gluCaution) ? "ok" : g < 54 || g > gluHigh ? "warning" : "caution";
-  const bpLight = sys >= 160 || dia >= 100 ? "warning" : sys >= 130 || dia >= 85 ? "caution" : "ok";
+    : g < gluBand.rougeLow ? "Très basse — 15 g de sucre, prévenez le médecin de bord."
+    : g < gluBand.orangeLow ? "Basse — 15 g de sucre, remesurez dans 15 min. Le médecin de bord est prévenu."
+    : g > gluHigh ? "Haute — remesurez, puis prévenez le médecin de bord."
+    : g > gluCaution ? (fasting ? "Au-dessus de la plage à jeun (70–99). Remesurez. Le médecin de bord est prévenu." : "Au-dessus de la plage après repas (70–140). Remesurez. Le médecin de bord est prévenu.")
+    : fasting ? "Dans la plage à jeun (70–99). Routine habituelle." : "Dans la plage après repas (70–140). Routine habituelle.";
+  const gluLight = glucoseLight(g, meal);
+  const bpLight = bpLights(sys, dia);
   const bpWord = bpLight === "warning" ? "Tension haute — reposez-vous, puis prévenez le médecin."
     : bpLight === "caution" ? "Au-dessus de votre plage cabine."
     : "Dans la plage cabine.";
   return (
     <>
       <Head title="Mesures guidées" sub="Un kit = une carte. Lisez la valeur, enregistrez, c’est transmis au médecin de bord." />
+      <BleConnect />
       <aside className="resp-block" aria-label="Responsabilité">
         <div className="resp-block-top">
           <h3>Responsabilité</h3>
@@ -279,7 +298,7 @@ export function AstroKits() {
               <h2>Glycémie</h2>
               <p>Lecteur Bluetooth · à jeun ou après repas</p>
             </div>
-            <span className="chip ok"><Icon name="bluetooth_connected" size={14} /> Connecté</span>
+            <span className={reading ? "chip ok" : "chip"}><Icon name="bluetooth" size={14} /> {reading?.deviceName ?? (liveRadio ? "En attente" : "Démo")}</span>
           </header>
           <div className="kit-readout">
             <label className="kit-value">
@@ -325,7 +344,7 @@ export function AstroKits() {
                 <strong className="mono">{pulse}</strong>
                 <small>bpm</small>
               </div>
-              <Demo />
+              {reading ? <span className="chip ok">Mesure réelle</span> : <Demo />}
             </div>
           ) : (
             <div className="kit-readout kit-bp-manual">
@@ -334,18 +353,90 @@ export function AstroKits() {
             </div>
           )}
           <p className="kit-status">{bpLight !== "ok" && <Lamp l={bpLight} compact />} {bpWord}</p>
-          <RateScale label="Systolique" value={sys} unit="mmHg" min={80} max={180} caution={130} high={160} />
+          <RateScale label="Systolique" value={sys} unit="mmHg" min={80} max={180} caution={TH.bp_systolic.orange} high={TH.bp_systolic.rouge} />
           <ol className="kit-steps">
             <li><b>1</b> Assis, bras à hauteur du cœur, 5 min de repos</li>
             <li><b>2</b> Brassard 2 cm au-dessus du coude</li>
             <li><b>3</b> Ne parlez pas pendant la mesure</li>
           </ol>
-          <button type="button" className="btn btn-primary" disabled={!sys || !dia} onClick={() => record("m-bp", `Tension ${sys}/${dia} mmHg${src === "bt" ? ` · pouls ${pulse} bpm` : " · saisie manuelle"}`, bpLight === "ok" ? "ok" : bpLight === "warning" ? "warning" : "caution")}>Enregistrer la tension</button>
+          <button type="button" className="btn btn-primary" disabled={!sys || !dia} onClick={() => record("m-bp", `Tension ${sys}/${dia} mmHg${src === "bt" ? ` · pouls ${pulse} bpm` : " · saisie manuelle"}`, bpLight)}>Enregistrer la tension</button>
         </article>
+
+        <TempMoodCards record={record} />
       </div>
     </>
   );
 }
+function TempMoodCards({ record }: { record: (mission: string, text: string, light: "ok" | "caution" | "warning") => void }) {
+  const reading = useBleReading();
+  const [temp, setTemp] = useState("36.7");
+  const [mood, setMood] = useState(4);
+  useEffect(() => {
+    if (reading?.temperatureC != null) setTemp(String(reading.temperatureC));
+  }, [reading]);
+  const c = Number(temp.replace(",", "."));
+  const tempState = temperatureLight(c);
+  const moodState = moodLight(mood);
+  const tempWord = !Number.isFinite(c) || c <= 0
+    ? "Saisissez la température en °C."
+    : tempState === "warning" && c >= TH.temperature.rougeHigh
+      ? "Fièvre — prise en charge par le médecin de bord, tout de suite."
+      : tempState === "warning"
+        ? "Température très basse — prévenir le médecin de bord, tout de suite."
+        : tempState === "caution"
+          ? "Hors plage 36,1–37,2 °C. Remesurez. L’astronaute et le médecin de bord sont prévenus."
+          : "Dans la plage indicative (36,1–37,2 °C). Continuer la routine.";
+  const moodWord = moodState === "warning"
+    ? "Humeur à 1 — prévenir le médecin de bord maintenant."
+    : moodState === "caution"
+      ? "Humeur basse. Notez-la. Si cela dure, le médecin de bord fait le point."
+      : "Humeur dans votre plage habituelle. Continuer la routine.";
+  return (
+    <>
+      <article className="kit-card">
+        <header className="kit-card-head">
+          <span className="kit-ico tone-ok"><Icon name="thermometer" size={24} /></span>
+          <div>
+            <h2>Température</h2>
+            <p>Thermomètre · saisie ou Bluetooth</p>
+          </div>
+          {reading?.temperatureC != null ? <span className="chip ok">Mesure réelle</span> : <Demo />}
+        </header>
+        <div className="kit-readout">
+          <label className="kit-value">
+            <span>Valeur</span>
+            <input inputMode="decimal" value={temp} onChange={(e) => setTemp(e.target.value.replace(/[^\d.,]/g, ""))} aria-label="Température en degrés Celsius" />
+            <small>°C</small>
+          </label>
+          <p className="kit-status"><Lamp l={tempState} /> {tempWord}</p>
+          {Number.isFinite(c) && c > 0 && (
+            <RateScale label="Température" value={c} unit="°C" min={34} max={40} caution={TH.temperature.orangeHigh} high={TH.temperature.rougeHigh} />
+          )}
+        </div>
+        <button type="button" className="btn btn-primary" disabled={!Number.isFinite(c) || c <= 0} onClick={() => record("m-temp", `Température ${c.toFixed(1)} °C`, tempState)}>Enregistrer la température</button>
+      </article>
+      <article className="kit-card">
+        <header className="kit-card-head">
+          <span className="kit-ico tone-accent"><Icon name="mood" size={24} /></span>
+          <div>
+            <h2>Humeur</h2>
+            <p>Échelle de 1 à 5 · pas de norme médicale</p>
+          </div>
+          <Demo />
+        </header>
+        <div className="dash-tabs" role="radiogroup" aria-label="Humeur du jour, de 1 à 5">
+          {[1, 2, 3, 4, 5].map((n) => (
+            <button key={n} type="button" role="radio" aria-checked={mood === n} onClick={() => setMood(n)}>{n}</button>
+          ))}
+        </div>
+        <p className="kit-status"><Lamp l={moodState} /> {moodWord}</p>
+        <p className="r-note">1 très basse · 5 très bonne. Comparée à vos jours habituels. <Demo /></p>
+        <button type="button" className="btn btn-primary" onClick={() => record("m-mood", `Humeur ${mood}/5`, moodState)}>Enregistrer l’humeur</button>
+      </article>
+    </>
+  );
+}
+
 const WELL_ITEMS: { icon: IconName; title: string; time: string; why: string; kind: "breath" | "sleep" | "ared" | "mind" | "call"; seconds?: number; mission?: string }[] = [
   { icon: "air", title: "Respiration 4-4", time: "5 min", why: "Calme le pouls avant le sommeil", kind: "breath", seconds: 5 * 60, mission: "r-breath" },
   { icon: "bedtime", title: "Routine de sommeil", time: "10 min", why: "Lumière ambrée, écran éteint 30 min avant", kind: "sleep", seconds: 10 * 60 },
@@ -431,6 +522,7 @@ export function AstroWellbeing() {
 export function AstroWatch() {
   const ME = useMe();
   const gamif = useGamification(ME.id);
+  const reading = useBleReading();
   const wg = gamif.enabled ? { streak: gamif.streak, crew: gamif.crew.pct } : null;
   return (
     <WatchSection crewId={ME.id}>
@@ -439,9 +531,13 @@ export function AstroWatch() {
           <Head title="Synchronisation" aside={<span className="watch-linked"><span className="chip ok"><Icon name="bluetooth_connected" size={16} /> Connectée</span><button type="button" className="btn btn-ghost sm" onClick={watch.disconnect}>Déconnecter</button></span>} />
           <ConductorProvider><TimeConductor />
           <div className="two-col">
-            <Card title="Pouls et SpO₂ · temps réel" icon="favorite" aside={<DataTag />}><LiveVitalsChart astronautId={ME.id} /></Card>
+            <Card title="Pouls et SpO₂ · temps réel" icon="favorite" aside={<DataTag />}>
+              {reading && <p className="r-note">Bluetooth · {reading.deviceName}{reading.heartRate != null ? ` · ${reading.heartRate} bpm` : ""}{reading.spo2 != null ? ` · SpO₂ ${reading.spo2} %` : ""} · mesure réelle</p>}
+              <LiveVitalsChart astronautId={ME.id} />
+            </Card>
             <Card title="Sommeil (automatique)" icon="bedtime" aside={<Demo />}><div className="kpis one"><div><strong>{ME.sleep}</strong><span>nuit dernière · objectif 7 h</span><svg className="hypno" viewBox="0 0 240 48" preserveAspectRatio="none" aria-hidden="true">{[3, 2, 1, 2, 3, 2, 1, 1, 2, 3, 2, 3].map((h, i) => <rect key={i} x={i * 20 + 2} y={48 - h * 14} width={16} height={h * 14} rx={2} />)}</svg></div></div></Card>
             <Card title="Rayonnement · dosimètre" icon="radiology" aside={<DataTag />}><RadiationChart astronautId={ME.id} /></Card>
+            <SpaceWeatherCard />
             <Card title="Aperçu de la montre (interactif)" icon="watch" aside={<Demo />}><div className="watch-prev"><Watch6 shape="square" goals={wg} /><Watch6 shape="round" view="caution" goals={wg} /></div><p className="muted small">Touchez le pouls pour la mini-silhouette, l’alerte pour la respiration.</p></Card>
             <Card title="Historique de synchro" icon="sync">
               <ul className="log">{[["09:39", "Synchro auto · 186 points de pouls"], ["07:12", "Nuit importée · 5h10"], ["J126 22:40", "Synchro auto · 1 040 points"]].map(([t, x]) => <li key={t}><span className="mono">{t}</span>{x}</li>)}</ul>
@@ -458,9 +554,9 @@ export function AstroReminders({ go }: { go: Go }) {
     ["07:30", "blood_pressure", "Tension (kit)", true, null],
     ["07:45", "bloodtype", "Glycémie à jeun", false, "/astronaute/kits"],
     ["08:00", "face", "Scan fatigue", false, "/astronaute/scan"],
-    ["12:30", "mood", "Humeur", false, "/astronaute/bien-etre"],
+    ["12:30", "mood", "Humeur", false, "/astronaute/kits"],
     ["18:00", "fitness_center", "Résistance ARED", false, "/astronaute/bien-etre"],
-    ["21:30", "thermometer", "Température", false, null],
+    ["21:30", "thermometer", "Température", false, "/astronaute/kits"],
   ];
   const next = rows.findIndex((r) => !r[3]);
   return (

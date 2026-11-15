@@ -11,7 +11,17 @@ Trois tableaux de bord, un par rôle, et une montre :
 
 L’application s’ouvre sur une **page d’accueil publique** (`/` : présentation de PULSAR, dangers HRP, parcours des données, démo interactive) ; le bouton « Se connecter » mène à **l’écran de connexion unique** `/connexion` (logo, présentation courte, photo de la Terre vue de l’ISS, formulaire). Chaque utilisateur saisit **son identifiant personnel** et son code : le rôle est déduit de l’identifiant (`AST-…`, `CMO-…`, `NASA-FS-…`) et il arrive directement sur son tableau de bord. Il n’y a **ni écran « Choix du profil » ni liste de comptes** dans l’interface.
 
-Ce dépôt contient **uniquement le front-end** (`frontend/`). Le dossier `backend/` est vide à part un README qui décrit l’API Python FastAPI prévue ; en attendant, le front utilise un **simulateur local**.
+Ce dépôt contient le **front-end** (`frontend/`) et le **serveur de bord** (`backend/`, FastAPI). Les prévisions restent simulées. Si l’API ne répond pas, le front revient à son simulateur. La clé NASA n’est jamais dans le navigateur : la carte météo appelle `GET /reference/space-weather`.
+
+### État au 15 novembre 2026
+
+- **Température (°C) et humeur (1 à 5)** se saisissent dans Kits (`/astronaute/kits`), avec voyant Nominal / Attention / Alerte, l’action à faire, la personne prévenue, et une ligne dans le journal de l’appareil.
+- **Seuils** centralisés dans `frontend/src/data/thresholds.ts`. La tension des prévisions (135/150) est alignée sur 130/160. Le pouls de l’accueil (90/110) est aligné sur 100/120. La glycémie à jeun suit 70–99. Les prévisions de glycémie restent sur le côté haut (126/180) parce qu’elles n’ont pas le contexte repas.
+- **Prévisions, Isolation Forest et LSTM** sont étiquetés **SIMULÉ** : aucun modèle réel ne tourne.
+- **Anglais** : titres des trois tableaux de bord (état du jour, surveillance équipage, titres de rapports NASA) via le sélecteur FR | EN. Le reste des écrans reste en français.
+- **Serveur de bord** : `cd backend && python -m app.seed && uvicorn app.main:app --port 8000`. Clés factices `demo-key-watch-lk`, `demo-key-kit-lk`, `demo-key-cmo` (empreinte SHA-256). Le front envoie `X-User-Id` depuis la session déjà ouverte, jamais une clé d’API.
+- **Météo spatiale** : carte sur la montre et le tableau du médecin. Provenance Connecté, Cache ou Hors ligne. Référence DONKI, pas une mesure d’équipage.
+- **Hors-ligne** : polices, scripts et icônes sont locaux (pas de CDN). Le build n’appelle pas Internet.
 
 ### Nouveautés
 

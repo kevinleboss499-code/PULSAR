@@ -16,6 +16,16 @@ frontend/playwright/.cache/
 .env.*
 !.env.example
 
+.venv/
+venv/
+*.db
+*.sqlite
+*.sqlite3
+*.pem
+*.key
+credentials.json
+secrets.json
+
 # Cache SVG Figma (npm run figma:icons) — régénéré, sans jeton
 frontend/public/figma-icons/*
 !frontend/public/figma-icons/.gitkeep

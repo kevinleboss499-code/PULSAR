@@ -4,6 +4,7 @@ import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Too
 import { useTelemetry, type TelemetrySample } from "@/api";
 import { Icon } from "@/components/ui";
 import { useConductorQuery } from "@/components/telemetry";
+import { THRESHOLDS as TH } from "@/data/thresholds";
 
 const AXIS = { stroke: "var(--line-strong)", tick: { fill: "var(--text-3)", fontSize: 11, fontFamily: "var(--font-mono)" }, tickLine: false } as const;
 const hhmmss = (iso: string) => iso.slice(11, 19);
@@ -31,7 +32,7 @@ export function LiveVitalsChart({ astronautId, height = 200 }: { astronautId: st
             <XAxis dataKey="timestamp" tickFormatter={hhmmss} minTickGap={48} {...AXIS} />
             <YAxis yAxisId="hr" domain={[40, 130]} width={40} {...AXIS} />
             <YAxis yAxisId="spo2" orientation="right" domain={[85, 100]} width={36} {...AXIS} />
-            <ReferenceLine yAxisId="spo2" y={92} stroke="var(--high)" strokeDasharray="4 4" label={{ value: "SpO₂ 92 %", fill: "var(--text-3)", fontSize: 10, position: "insideBottomRight" }} />
+            <ReferenceLine yAxisId="spo2" y={TH.spo2.rouge} stroke="var(--high)" strokeDasharray="4 4" label={{ value: `SpO₂ ${TH.spo2.rouge} %`, fill: "var(--text-3)", fontSize: 10, position: "insideBottomRight" }} />
             <Tooltip {...tip} />
             <Line yAxisId="hr" type="monotone" dataKey="heartRate" name="FC (bpm)" stroke="var(--accent)" strokeWidth={2} dot={false} isAnimationActive={false} />
             <Line yAxisId="spo2" type="monotone" dataKey="spo2" name="SpO₂ (%)" stroke="var(--text-2)" strokeWidth={1.5} dot={false} isAnimationActive={false} />

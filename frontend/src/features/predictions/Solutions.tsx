@@ -38,8 +38,8 @@ export function Disclaimer({ simple }: { simple?: boolean }) {
     <p className="disclaimer" role="note">
       <Icon name="info" size={16} />
       {simple
-        ? <span>Ces conseils viennent d’un modèle. En cas de doute ou de symptôme, prévenez le médecin de bord.</span>
-        : <span>Prévisions et solutions générées par des modèles statistiques (Isolation Forest, autoencodeur LSTM) ; elles doivent être validées par le médecin de bord ou un flight surgeon.</span>}
+        ? <span>Prévisions SIMULÉES : aucun modèle Isolation Forest ni LSTM ne tourne. En cas de doute ou de symptôme, prévenez le médecin de bord. Ce n’est pas un diagnostic.</span>
+        : <span>Prévisions, Isolation Forest et autoencodeur LSTM : SIMULÉS tant qu’aucun modèle réel ne tourne. Aide à la décision, pas un diagnostic. À valider par le médecin de bord ou un flight surgeon.</span>}
     </p>
   );
 }

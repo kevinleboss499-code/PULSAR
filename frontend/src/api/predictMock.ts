@@ -3,6 +3,7 @@
    Le vrai backend (Isolation Forest / autoencodeur LSTM + modèle de prévision) devra renvoyer les mêmes formes
    (docs/API-CONTRACT.md). */
 import type { AlertLevel, Anomaly, ForecastPoint, Horizon, MetricForecast, Prediction, PredictionMetric, Recommendation, RecommendationUpdate } from "./types";
+import { THRESHOLDS as TH } from "@/data/thresholds";
 
 const HOUR = 3_600_000, DAY = 24 * HOUR;
 const noise = (seed: number) => { const x = Math.sin(seed * 12.9898) * 43758.5453; return x - Math.floor(x) - 0.5; };
@@ -14,13 +15,13 @@ type Spec = {
   thr: MetricForecast["thresholds"]; every?: number; daily?: boolean; event?: { atH: number; add: number; width: number };
 };
 const DEF: Record<PredictionMetric, Omit<Spec, "base" | "slopeH" | "slopeD">> = {
-  heart_rate: { label: "FC de repos", unit: "bpm", dec: 0, amp: 2.5, sd: 1.2, thr: { orange: 100, rouge: 120, direction: "above" } },
-  spo2: { label: "SpO₂", unit: "%", dec: 1, amp: 0.3, sd: 0.3, thr: { orange: 94, rouge: 92, direction: "below" } },
-  bp_systolic: { label: "Tension systolique", unit: "mmHg", dec: 0, amp: 3, sd: 2, every: 12, thr: { orange: 135, rouge: 150, direction: "above" } },
-  skin_temp: { label: "Température", unit: "°C", dec: 1, amp: 0.15, sd: 0.06, thr: { orange: 37.5, rouge: 38, direction: "above" } },
-  glucose: { label: "Glycémie", unit: "mg/dL", dec: 0, amp: 6, sd: 3, every: 8, thr: { orange: 126, rouge: 180, direction: "above" } },
-  sleep: { label: "Sommeil", unit: "h", dec: 1, amp: 0, sd: 0.25, daily: true, thr: { orange: 6, rouge: 5, direction: "below" } },
-  radiation: { label: "Débit de dose", unit: "µSv/h", dec: 1, amp: 1.5, sd: 0.8, thr: { orange: 40, rouge: 100, direction: "above" } },
+  heart_rate: { label: "FC de repos", unit: "bpm", dec: 0, amp: 2.5, sd: 1.2, thr: { orange: TH.heart_rate.orange, rouge: TH.heart_rate.rouge, direction: "above" } },
+  spo2: { label: "SpO₂", unit: "%", dec: 1, amp: 0.3, sd: 0.3, thr: { orange: TH.spo2.orange, rouge: TH.spo2.rouge, direction: "below" } },
+  bp_systolic: { label: "Tension systolique", unit: "mmHg", dec: 0, amp: 3, sd: 2, every: 12, thr: { orange: TH.bp_systolic.orange, rouge: TH.bp_systolic.rouge, direction: "above" } },
+  skin_temp: { label: "Température", unit: "°C", dec: 1, amp: 0.15, sd: 0.06, thr: { orange: TH.temperature.orangeHigh, rouge: TH.temperature.rougeHigh, direction: "above" } },
+  glucose: { label: "Glycémie", unit: "mg/dL", dec: 0, amp: 6, sd: 3, every: 8, thr: { orange: TH.glucose_forecast.orange, rouge: TH.glucose_forecast.rouge, direction: "above" } },
+  sleep: { label: "Sommeil", unit: "h", dec: 1, amp: 0, sd: 0.25, daily: true, thr: { orange: TH.sleep.orange, rouge: TH.sleep.rouge, direction: "below" } },
+  radiation: { label: "Débit de dose", unit: "µSv/h", dec: 1, amp: 1.5, sd: 0.8, thr: { orange: TH.radiation.orange, rouge: TH.radiation.rouge, direction: "above" } },
 };
 // base, pente par heure (horizon 24 h), pente par jour (horizon 7 j) — scénarios de démo par astronaute
 type P = [number, number, number];

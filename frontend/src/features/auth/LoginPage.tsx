@@ -10,6 +10,10 @@ import { normalizeId } from "./authService";
 import { AuthError, type AuthErrorCode } from "./types";
 import { homeFor, roleFromId } from "./roles";
 import { SpaceFilm } from "@/features/landing/SpaceFilm";
+import { BleConnect } from "@/features/ble/BleConnect";
+import { hasWebBluetooth } from "@/features/ble/gatt";
+import { radioStatus } from "@/features/ble/radio";
+import { useBleReading } from "@/features/ble/store";
 import "@/features/landing/landing.css";
 
 export function LoginPage() {
@@ -25,9 +29,17 @@ export function LoginPage() {
   const [show, setShow] = useState(false);
   const [pending, setPending] = useState(false);
   const [err, setErr] = useState<{ code: AuthErrorCode; msg: string } | null>(null);
+  const [mustBle, setMustBle] = useState(false);
+  const ble = useBleReading();
   const idRef = useRef<HTMLInputElement>(null);
   const codeRef = useRef<HTMLInputElement>(null);
   useEffect(() => { document.title = L.titleDoc; }, [L.titleDoc]);
+  useEffect(() => {
+    let live = true;
+    radioStatus().then((ok) => { if (live) setMustBle(ok || hasWebBluetooth()); });
+    return () => { live = false; };
+  }, []);
+  const bleLocked = mustBle && !ble;
 
   if (user && !pending) return <Navigate to={homeFor(user.role)} replace />;
 
@@ -79,10 +91,13 @@ export function LoginPage() {
           </Link>
           <h1 style={{ whiteSpace: "pre-line" }}>{L.h1}</h1>
           <p className="lead">{L.lead}</p>
+          <p className="login-ble-ask">{L.bleBefore}</p>
+          <BleConnect />
           {loc.state?.loggedOut && (
             <p className="hint" role="status"><Icon name="check_circle" size={18} /> {L.loggedOut}</p>
           )}
           <form className="login-form" noValidate aria-label={L.submit} onSubmit={submit}>
+            <fieldset className="login-fields" disabled={bleLocked}>
             <div className="field">
               <label htmlFor="login-id">{L.idLabel}</label>
               <input
@@ -157,6 +172,7 @@ export function LoginPage() {
             >
               {pending ? (<><Icon name="sync" className="spin" /> {L.submitting}</>) : (<>{L.submit} <Icon name="arrow_forward" /></>)}
             </button>
+            </fieldset>
           </form>
         </main>
       </div>

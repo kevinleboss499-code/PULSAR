@@ -17,7 +17,10 @@ import { LiveVitalsChart, RadiationChart } from "@/components/charts";
 import { ConductorProvider, TimeConductor } from "@/components/telemetry";
 import { AstronautLad } from "@/features/predictions";
 import { DataTag } from "@/app/DataSource";
+import { SpaceWeatherCard } from "@/features/reference/SpaceWeather";
 import { pushBoard, useJournal } from "@/features/board/localLog";
+import { bpLights, spo2Light } from "@/data/thresholds";
+import { useLang } from "@/i18n";
 const SEV: Record<Light, number> = { ok: 0, caution: 1, warning: 2 };
 function CrewTile({ m, go }: { m: Member; go: Go }) {
   const spark = TRENDS[0].series[m.id] ?? [m.hr];
@@ -43,6 +46,7 @@ function CrewTile({ m, go }: { m: Member; go: Go }) {
   );
 }
 export function CmoBoard({ go }: { go: Go }) {
+  const { t } = useLang();
   const events = useJournal();
   const n = (l: Light) => CREW.filter((m) => m.light === l).length;
   const priority = [...CREW].sort((a, b) => SEV[b.light] - SEV[a.light])[0];
@@ -53,7 +57,7 @@ export function CmoBoard({ go }: { go: Go }) {
     <div className="m01 m01--clinic m01--saas">
       <section className="ops-board" aria-label="Surveillance équipage">
         <header className="ops-head">
-          <h1>Surveillance équipage</h1>
+          <h1>{t.dash.cmo}</h1>
           <div className="lamp-sum"><Lamp l="ok" /><b className="mono">{n("ok")}</b><Lamp l="caution" /><b className="mono">{n("caution")}</b><Lamp l="warning" /><b className="mono">{n("warning")}</b><Demo /></div>
         </header>
 
@@ -75,9 +79,9 @@ export function CmoBoard({ go }: { go: Go }) {
           </div>
           <div className="m01-patient-dials" aria-label="Constantes prioritaires">
             <HudDial label="Pouls" value={priority.hr} unit="bpm" pct={priority.hr / 130} light={priority.light} />
-            <HudDial label="SpO₂" value={priority.spo2} unit="%" pct={priority.spo2 / 100} light={priority.spo2 < 95 ? "caution" : "ok"} />
+            <HudDial label="SpO₂" value={priority.spo2} unit="%" pct={priority.spo2 / 100} light={spo2Light(priority.spo2)} />
             <HudDial label="Temp." value={priority.temp} unit="°C" pct={0.55} light="ok" />
-            <HudDial label="Tension" value={priority.bp} unit="mmHg" pct={sys / 180} light={sys >= 130 ? "caution" : "ok"} />
+            <HudDial label="Tension" value={priority.bp} unit="mmHg" pct={sys / 180} light={bpLights(sys, Number(priority.bp.split("/")[1]) || 80)} />
           </div>
           <div className="m01-patient-body">
             <BodyFigure states={zones} sel={body.sel} onPick={body.pick} zoom={body.zoom} need={body.need} views={false} />
@@ -138,6 +142,7 @@ export function CmoBoard({ go }: { go: Go }) {
               <button type="button" className="btn btn-ghost sm" onClick={() => go("/medecin-bord/journal")}>Journal complet</button>
             </Card>
             <CrewParticipationCard />
+            <SpaceWeatherCard />
           </aside>
         </div>
       </section>

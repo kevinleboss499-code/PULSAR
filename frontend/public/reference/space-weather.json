@@ -1,0 +1,13 @@
+{
+  "provenance": "offline",
+  "fetched_at": null,
+  "summary": "Fichier local : activité solaire modérée, aucun événement extrême dans cette copie.",
+  "events": [
+    {
+      "kind": "reference",
+      "title": "Référence locale — pas une mesure du dosimètre de bord",
+      "time": "2026-11-14T00:00:00Z"
+    }
+  ],
+  "note": "Données de référence, pas des mesures de l'équipage. DÉMO."
+}

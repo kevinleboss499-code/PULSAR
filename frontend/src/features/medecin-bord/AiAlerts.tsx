@@ -2,7 +2,7 @@
 import { useAlerts, LEVEL_TO_LIGHT } from "@/api";
 import { Lamp, WorkflowBadge, workflowFromAlert } from "@/components/ui";
 
-const MODEL = { isolation_forest: "Isolation Forest", lstm_autoencoder: "Autoencodeur LSTM", rule: "Règle seuil" } as const;
+const MODEL = { isolation_forest: "Isolation Forest · SIMULÉ", lstm_autoencoder: "Autoencodeur LSTM · SIMULÉ", rule: "Règle seuil · SIMULÉ" } as const;
 const time = (iso: string) => new Date(iso).toISOString().slice(11, 16) + " UTC";
 
 export function AiAlerts({ astronautId }: { astronautId?: string }) {

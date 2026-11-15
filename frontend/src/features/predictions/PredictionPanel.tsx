@@ -11,7 +11,7 @@ import { ForecastChart, ForecastLegend } from "./ForecastChart";
 import { AstronautLad } from "./AstronautLad";
 import { Disclaimer, Solutions } from "./Solutions";
 
-export const MODEL_LABEL = { isolation_forest: "Isolation Forest", lstm_autoencoder: "Autoencodeur LSTM", rule: "Règle seuil" } as const;
+export const MODEL_LABEL = { isolation_forest: "Isolation Forest · SIMULÉ", lstm_autoencoder: "Autoencodeur LSTM · SIMULÉ", rule: "Règle seuil · SIMULÉ" } as const;
 const LEVEL_WORD = { vert: "faible", orange: "modéré", rouge: "élevé" } as const;
 
 export function HorizonToggle({ value, onChange }: { value: Horizon; onChange: (h: Horizon) => void }) {
@@ -45,7 +45,7 @@ function RiskSummary({ p, simple }: { p: Prediction; simple: boolean }) {
       <div><p className="eyebrow">{simple ? "Risque prévu" : "Niveau de risque prévu"}</p><div className="risk-lamp"><Lamp l={LEVEL_TO_LIGHT[p.riskLevel]} /><span className="muted">{p.riskLevel} · {LEVEL_WORD[p.riskLevel]}</span></div></div>
       <div><p className="eyebrow">Score de dérive</p><DriftMeter v={p.driftScore} /></div>
       <div className="risk-next"><p className="eyebrow">Prochain seuil</p><p className="risk-tth"><Icon name="hourglass" size={16} /> {nextThresholdText(p, simple)}</p></div>
-      {!simple && <p className="muted small risk-model"><Icon name="memory" size={14} /> {p.model} · généré {p.generatedAt.slice(11, 16)} UTC</p>}
+      {!simple && <p className="muted small risk-model"><Icon name="memory" size={14} /> {p.model} · SIMULÉ · généré {p.generatedAt.slice(11, 16)} UTC</p>}
     </div>
   );
 }

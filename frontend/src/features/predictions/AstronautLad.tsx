@@ -1,6 +1,7 @@
 /* Dernières valeurs disponibles d’un astronaute (tableau LAD) : capteurs temps réel + dernières mesures de kit. */
 import { usePredictions, useTelemetry } from "@/api";
 import { LadTable, type LadRow } from "@/components/telemetry";
+import { THRESHOLDS as TH } from "@/data/thresholds";
 
 const hm = (iso: string) => iso.slice(11, 19);
 export function AstronautLad({ astronautId }: { astronautId: string }) {
@@ -11,9 +12,9 @@ export function AstronautLad({ astronautId }: { astronautId: string }) {
   const lastObs = (m: string) => { const f = fc(m); const pt = f && [...f.points].reverse().find((x) => x.observed != null); return { f, pt }; };
   const rows: LadRow[] = [];
   if (live) {
-    rows.push({ key: "hr", name: "Fréquence cardiaque", time: hm(live.timestamp), value: live.heartRate, unit: "bpm", orange: 100, rouge: 120, direction: "above", staleSec: (Date.now() - Date.parse(live.timestamp)) / 1000 });
-    rows.push({ key: "spo2", name: "SpO₂", time: hm(live.timestamp), value: live.spo2, unit: "%", orange: 94, rouge: 92, direction: "below" });
-    rows.push({ key: "dose", name: "Débit de dose", time: hm(live.timestamp), value: live.radiationDoseRate, unit: "µSv/h", orange: 40, rouge: 100, direction: "above" });
+    rows.push({ key: "hr", name: "Fréquence cardiaque", time: hm(live.timestamp), value: live.heartRate, unit: "bpm", orange: TH.heart_rate.orange, rouge: TH.heart_rate.rouge, direction: "above", staleSec: (Date.now() - Date.parse(live.timestamp)) / 1000 });
+    rows.push({ key: "spo2", name: "SpO₂", time: hm(live.timestamp), value: live.spo2, unit: "%", orange: TH.spo2.orange, rouge: TH.spo2.rouge, direction: "below" });
+    rows.push({ key: "dose", name: "Débit de dose", time: hm(live.timestamp), value: live.radiationDoseRate, unit: "µSv/h", orange: TH.radiation.orange, rouge: TH.radiation.rouge, direction: "above" });
   }
   for (const m of ["bp_systolic", "skin_temp", "glucose", "sleep"]) {
     const { f, pt } = lastObs(m);

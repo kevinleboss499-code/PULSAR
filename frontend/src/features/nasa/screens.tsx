@@ -13,8 +13,18 @@ import { EchoConfirm, EchoReview, retainFor, studyLine } from "./EchoReview";
 import { PredictionsSummary } from "./PredictionsSummary";
 import { SoundButton } from "@/features/sound";
 import { downloadPdf } from "./reportFile";
+import { useLang } from "@/i18n";
+
+function dashTitle(title: string, lang: "fr" | "en") {
+  if (lang === "fr") return title;
+  return title
+    .replace("Bilan programmé", "Scheduled report")
+    .replace("Alerte rouge", "Red alert")
+    .replace("SpO₂ basse", "low SpO₂");
+}
 function Latency({ r }: { r: (typeof REPORTS)[number] }) { return <p className="latency"><Icon name="schedule" size={14} /> Données reçues {r.age}, générées à {r.generated.split("· ")[1]} à bord</p>; }
 function ReportList({ cur, go }: { cur: string; go: Go }) {
+  const { lang } = useLang();
   const [filter, setFilter] = useState<"tous" | "red" | "prog">("tous");
   const redN = REPORTS.filter((r) => r.kind === "red").length;
   const progN = REPORTS.filter((r) => r.kind !== "red").length;
@@ -37,7 +47,7 @@ function ReportList({ cur, go }: { cur: string; go: Go }) {
             <button type="button" aria-current={r.id === cur ? "true" : undefined} className={`rep ${r.kind}`} onClick={() => go(`/nasa/rapport/${r.id}`)}>
               <span className="rep-kind">{r.kind === "red" ? <><Icon name="error" size={14} /> Alerte rouge</> : <><Icon name="schedule" size={14} /> Programmé</>}</span>
               {r.unread && <i className="dot" aria-label="Non lu" />}
-              <strong>{r.title}</strong>
+              <strong>{dashTitle(r.title, lang)}</strong>
               <span className="rep-meta">Généré {r.generated} · reçu {r.age}</span>
               <span className="rep-lights">
                 {Object.entries(r.lights).filter(([, l]) => l !== "ok").map(([k, l]) => (
@@ -85,11 +95,12 @@ function ReportSilhouette({ light }: { light: Light }) {
   );
 }
 function ReportDetail({ r, go, studyId, onStudy }: { r: (typeof REPORTS)[number]; go: Go; studyId?: string; onStudy: (id: string) => void }) {
+  const { lang } = useLang();
   const wf = (r.workflowStatus ?? (r.unread ? "nouveau" : "vu")) as WorkflowStatus;
   const focus = CREW.find((m) => r.lights[m.id] !== "ok") ?? CREW[0];
   return (
     <article className="rep-detail">
-      <header className="rep-head"><div><h1>{r.title}</h1><Latency r={r} /><WorkflowBadge status={wf} assignee={r.assignee ?? "NASA-FS-001"} /></div><div className="btn-row"><button type="button" className="btn btn-secondary" onClick={() => savePdf(r)}><Icon name="download" size={18} /> PDF</button><button className="btn btn-primary" onClick={() => go("/nasa/reponse")}><Icon name="reply" size={18} /> Recommandation</button></div></header>
+      <header className="rep-head"><div><h1>{dashTitle(r.title, lang)}</h1><Latency r={r} /><WorkflowBadge status={wf} assignee={r.assignee ?? "NASA-FS-001"} /></div><div className="btn-row"><button type="button" className="btn btn-secondary" onClick={() => savePdf(r)}><Icon name="download" size={18} /> PDF</button><button className="btn btn-primary" onClick={() => go("/nasa/reponse")}><Icon name="reply" size={18} /> Recommandation</button></div></header>
       <section className="rep-sec synth">
         <div>
           <h2><Icon name="warning" size={18} /> À retenir</h2>
@@ -109,6 +120,7 @@ function ReportDetail({ r, go, studyId, onStudy }: { r: (typeof REPORTS)[number]
   );
 }
 export function NasaReply({ go }: { go: Go }) {
+  const { lang } = useLang();
   const [prio, setPrio] = useState("routine");
   const dest = ["Médecin de bord", "Lina Kovacs", "Tout l’équipage"];
   const [to, setTo] = useState<string[]>(["Médecin de bord", "Lina Kovacs"]);
@@ -118,7 +130,7 @@ export function NasaReply({ go }: { go: Go }) {
   const toggleTo = (name: string) => setTo((cur) => (cur.includes(name) ? cur.filter((x) => x !== name) : [...cur, name]));
   return (
     <article className="rep-detail">
-      <header className="rep-head"><div><h1>Recommandation à l’équipage</h1><p className="latency"><Icon name="schedule_send" size={14} /> {queued ? "En attente du backend — liaison montante non envoyée" : `Brouillon · prochaine fenêtre ${WINDOWS.nextUp}`}</p></div></header>
+      <header className="rep-head"><div><h1>{lang === "en" ? "Recommendation to the crew" : "Recommandation à l’équipage"}</h1><p className="latency"><Icon name="schedule_send" size={14} /> {queued ? "En attente du backend — liaison montante non envoyée" : `Brouillon · prochaine fenêtre ${WINDOWS.nextUp}`}</p></div></header>
       <div className="reply-grid">
         <div className="r-card form">
           <label>Destinataires<div className="seg2">{dest.map((name) => <button type="button" key={name} aria-pressed={to.includes(name)} onClick={() => toggleTo(name)}>{name}</button>)}</div></label>

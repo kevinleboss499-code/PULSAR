@@ -75,7 +75,7 @@ test("accueil : un seul écran de connexion, sans choix de profil ni comptes de 
   await expect(page.locator("#login-code")).toBeVisible();
   await expect(page.getByText(/Choix du profil|Comptes de démonstration/)).toHaveCount(0);
   for (const id of ["AST-001", "CMO-001", "NASA-FS-001"]) await expect(page.getByText(id, { exact: false })).toHaveCount(0);
-  await expect(page.locator("main button, form button")).toHaveCount(2); // afficher/masquer le code + valider
+  await expect(page.locator("main button, form button")).toHaveCount(3); // Bluetooth + afficher/masquer le code + valider
 });
 
 test("NASA : liste des rapports et réponse", async ({ page }) => {

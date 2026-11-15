@@ -26,13 +26,24 @@ export const USE_MOCK = import.meta.env.VITE_USE_MOCK === "true";
 export class ApiError extends Error { constructor(public status: number, message: string) { super(message); this.name = "ApiError"; } }
 export class NetworkError extends Error { constructor(message: string) { super(message); this.name = "NetworkError"; } }
 
+/** Identifiant déjà en session (pas une clé d'API). Le serveur filtre le rôle. */
+function sessionUserHeader(): Record<string, string> {
+  try {
+    if (typeof localStorage === "undefined") return {};
+    const raw = localStorage.getItem("pulsar.session");
+    const id = raw ? (JSON.parse(raw) as { user?: { id?: string } }).user?.id : undefined;
+    if (typeof id === "string" && id) return { "X-User-Id": id };
+  } catch { /* session illisible : le serveur répond comme une lecture de démo sans identité */ }
+  return {};
+}
+
 async function get<T>(path: string, params: Record<string, string | number | undefined> = {}, timeoutMs = 4000, init?: RequestInit): Promise<T> {
   const url = new URL(API_URL + path);
   for (const [k, v] of Object.entries(params)) if (v !== undefined && v !== "") url.searchParams.set(k, String(v));
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), timeoutMs);
   let res: Response;
-  try { res = await fetch(url, { ...init, headers: { Accept: "application/json", ...(init?.body ? { "Content-Type": "application/json" } : {}) }, signal: ctrl.signal }); }
+  try { res = await fetch(url, { ...init, headers: { Accept: "application/json", ...sessionUserHeader(), ...(init?.headers ?? {}), ...(init?.body ? { "Content-Type": "application/json" } : {}) }, signal: ctrl.signal }); }
   catch (e) { throw new NetworkError(`API injoignable (${API_URL}) : ${(e as Error).message}`); }
   finally { clearTimeout(t); }
   if (!res.ok) throw new ApiError(res.status, `${path} → HTTP ${res.status}`);

@@ -753,6 +753,9 @@
 .login-top { display: flex; justify-content: space-between; align-items: center; gap: var(--s3); flex-wrap: wrap; min-width: 0; }
 .login-top-r { display: flex; align-items: center; gap: var(--s2); flex-wrap: wrap; justify-content: end; }
 .login-main { margin: 0; max-width: 420px; width: 100%; display: grid; gap: var(--s4); padding: var(--s5) 0 0; }
+.login-ble-ask { margin: 0; color: var(--text); }
+.login-main .watch-scan-list { max-height: 200px; }
+.login-fields { border: 0; margin: 0; padding: 0; min-inline-size: 0; display: grid; gap: var(--s4); }
 .login-main h1 {
   font-family: var(--font-head);
   font-size: clamp(2rem, 3.4vw, 2.75rem);

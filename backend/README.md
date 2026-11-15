@@ -1,6 +1,40 @@
-# PULSAR — backend (prévu, non implémenté)
+# PULSAR — serveur de bord
 
-> Ce dossier est **volontairement vide** : le dépôt ne contient aujourd’hui que le **front-end** (`../frontend`).
+Prototype FastAPI du vaisseau. Les lectures suivent `docs/API-CONTRACT.md`. Les écritures passent par `POST /sync` avec une clé factice (`demo-key-…`), stockée seulement en SHA-256. Les prévisions sont **simulées**. La météo spatiale (`GET /reference/space-weather`) appelle DONKI depuis ce serveur, avec repli cache puis fichier local.
+
+```bash
+cd backend
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env
+python -m app.seed
+python -m unittest discover -s tests -t . -v
+uvicorn app.main:app --port 8000
+```
+
+Exemples :
+
+```bash
+curl -s localhost:8000/health
+curl -s localhost:8000/astronauts
+curl -s 'localhost:8000/telemetry?astronaut_id=LK&limit=3'
+curl -s -X POST localhost:8000/sync -H 'Content-Type: application/json' -H 'X-Api-Key: demo-key-watch-lk' \
+  -d '{"client_event_id":"evt-1","astronaut_id":"LK","metric":"heart_rate","value":76,"recorded_at":"2026-11-15T06:00:00Z"}'
+curl -s -X POST localhost:8000/sync -H 'Content-Type: application/json' -H 'X-Api-Key: demo-key-kit-lk' \
+  -d '{"client_event_id":"evt-920","astronaut_id":"LK","metric":"glucose","value":920,"recorded_at":"2026-11-15T06:01:00Z"}'
+curl -s localhost:8000/reference/space-weather
+```
+
+Le second `curl` de `evt-1` renvoie `"duplicate": true` sans créer une deuxième ligne. La glycémie 920 répond 422. La clé montre qui envoie une glycémie répond 403. `X-User-Id: AST-001` ne peut pas lire la télémétrie de `AM`.
+
+`NASA_API_KEY` se lit dans `.env` (défaut `DEMO_KEY`). Elle n’est pas envoyée au navigateur.
+
+---
+
+# Contrat prévu (rappel)
+
+> Le front bascule sur son simulateur si ce serveur ne répond pas.
 > Ce README décrit le backend Python à développer. Le contrat JSON exact attendu par le front est dans
 > [`../docs/API-CONTRACT.md`](../docs/API-CONTRACT.md) — c’est la référence à respecter.
 
