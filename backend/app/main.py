@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 from app.db import connect, init_db
 from app.demo import CREW
 from app.forecast import build_predictions
+from app.hr_models import live_forecast
 from app.rules import WATCH_METRICS, metric_level, reject_impossible
 from app.security import same_hash, sha256_hex
 from app.seed import seed
@@ -94,7 +95,12 @@ def _sample(astronaut_id: str, t: float) -> dict:
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "version": "0.1.0", "models": ["simulated-rules"], "note": "Isolation Forest et LSTM ne tournent pas. SIMULÉ."}
+    return {
+        "status": "ok",
+        "version": "0.1.0",
+        "models": ["xgboost", "lstm", "prophet"],
+        "note": "FC : XGBoost, LSTM et Prophet sur la série de démonstration. Aide à la décision, pas un diagnostic.",
+    }
 
 
 @app.get("/astronauts")
@@ -135,6 +141,19 @@ def telemetry(astronaut_id: str, limit: int = 60, since: str | None = None, unti
     if since:
         points = [p for p in points if p["timestamp"] > since]
     return points
+
+
+@app.get("/heart-rate/live")
+def heart_rate_live(astronaut_id: str, until: str | None = None, x_user_id: str | None = Header(default=None)):
+    if astronaut_id not in CREW:
+        raise HTTPException(404, "Astronaute inconnu")
+    conn = connect()
+    try:
+        _can_read(_user(conn, x_user_id), astronaut_id, live=True)
+    finally:
+        conn.close()
+    end = datetime.fromisoformat(until.replace("Z", "+00:00")).timestamp() if until else time.time()
+    return live_forecast(astronaut_id, end)
 
 
 def _alerts() -> list[dict]:

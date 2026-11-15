@@ -1,9 +1,11 @@
 /* Bandeau fixe : confirmation, ou « Backend requis ». Icône + mots, jamais la couleur seule. */
 import { Icon } from "./Icon";
 import { dismissNotice, useNotices } from "./noticeStore";
+import { useLang } from "@/i18n";
 
 export function NoticeHost() {
   const items = useNotices();
+  const { tr } = useLang();
   if (!items.length) return null;
   return (
     <div className="notice-host" aria-live="polite" aria-relevant="additions">
@@ -14,7 +16,7 @@ export function NoticeHost() {
             <strong>{n.title}</strong>
             <p>{n.detail}</p>
           </div>
-          <button type="button" className="icon-btn" aria-label="Fermer la notification" onClick={() => dismissNotice(n.id)}>
+          <button type="button" className="icon-btn" aria-label={tr("Fermer la notification", "Dismiss notification")} onClick={() => dismissNotice(n.id)}>
             <Icon name="close" size={16} />
           </button>
         </div>

@@ -1,13 +1,14 @@
-/* Appairage montre : Bluetooth à activer, puis un appareil, puis la synchro.
-   Persistance localStorage par astronaute. L’état « en cours » est partagé entre les hooks ouverts. */
+/* Appairage : la radio liste les appareils réellement à portée, puis ouvre la liaison.
+   Persistance localStorage par astronaute. L’état « en cours » reste local. */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { disconnect as disconnectBle, hasWebBluetooth, holdDevice, listen, requestNearbyDevice, takeDevice } from "@/features/ble/gatt";
-import { radioDevices, radioStatus, startRadioScan, stopRadioScan } from "@/features/ble/radio";
+import { connectRadio, disconnectRadio, followRadioLink, radioDevices, radioLink, radioStatus, startRadioScan, stopRadioScan } from "@/features/ble/radio";
+import { buzzEspFort } from "@/features/sound/hardwareBuzzer";
 import { clearReading, publishReading } from "@/features/ble/store";
 
-export type WatchPairState = "idle" | "enabling" | "scanning" | "paired" | "offline";
+export type WatchPairState = "idle" | "enabling" | "scanning" | "paired";
 
-export type NearbyWatch = { id: string; name: string; rssi: number; live?: boolean };
+export type NearbyWatch = { id: string; name: string; rssi: number; live?: boolean; esp?: boolean };
 
 export type WatchPairing = {
   state: WatchPairState;
@@ -17,6 +18,8 @@ export type WatchPairing = {
 };
 
 const key = (crewId: string) => `pulsar.watch.${crewId}`;
+const MAC = /^[0-9A-F]{2}(?::[0-9A-F]{2}){5}$/i;
+const NO_RADIO = "Cette page ne joint pas la radio Bluetooth. Ouvrez l’application avec npm run dev pour voir les appareils réellement à portée.";
 
 const EMPTY: WatchPairing = { state: "idle", watchId: null, watchName: null, pairedAt: null };
 
@@ -43,27 +46,34 @@ function save(crewId: string, p: WatchPairing) {
   emit();
 }
 
-/** Montres fictives découvertes au scan (DÉMO). */
-export function mockNearby(crewId: string): NearbyWatch[] {
-  return [
-    { id: `WT-${crewId}-A`, name: `PULSAR Watch · ${crewId}`, rssi: -48 },
-    { id: `WT-${crewId}-B`, name: "PULSAR Watch · cabine", rssi: -67 },
-  ];
-}
-
 export function useWatchPairing(crewId: string) {
   const [p, setP] = useState<WatchPairing>(() => (typeof localStorage === "undefined" ? EMPTY : loadPairing(crewId)));
   const [nearby, setNearby] = useState<NearbyWatch[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [bridge, setBridge] = useState(false);
   const [radioPending, setRadioPending] = useState(true);
+  const [liveLink, setLiveLink] = useState(false);
   const timers = useRef<number[]>([]);
   const scanning = useRef(false);
+  const stopFollow = useRef<(() => void) | null>(null);
 
   const clearTimers = () => {
     timers.current.forEach((id) => window.clearTimeout(id));
     timers.current = [];
   };
+
+  const stopFollowLink = () => {
+    stopFollow.current?.();
+    stopFollow.current = null;
+  };
+
+  const follow = useCallback((name: string) => {
+    stopFollowLink();
+    stopFollow.current = followRadioLink((link) => {
+      publishReading({ deviceName: link.name || name, at: Date.now(), ...link.reading });
+      setLiveLink(true);
+    });
+  }, []);
 
   useEffect(() => {
     let live = true;
@@ -79,13 +89,25 @@ export function useWatchPairing(crewId: string) {
   useEffect(() => {
     setP(loadPairing(crewId));
     setNearby([]);
+    setLiveLink(false);
     scanning.current = false;
+    let live = true;
+    void radioLink().then((link) => {
+      if (!live || !link) return;
+      const next: WatchPairing = { state: "paired", watchId: link.id, watchName: link.name, pairedAt: new Date().toISOString() };
+      save(crewId, next);
+      setP(next);
+      setLiveLink(true);
+      follow(link.name);
+    });
     return () => {
+      live = false;
       clearTimers();
       scanning.current = false;
+      stopFollowLink();
       void stopRadioScan();
     };
-  }, [crewId]);
+  }, [crewId, follow]);
 
   useEffect(() => {
     const pull = () => {
@@ -101,15 +123,9 @@ export function useWatchPairing(crewId: string) {
     scanning.current = true;
     setNearby([]);
     setError(null);
-    setP({ ...EMPTY, state: "enabling" });
-    const useMock = () => {
-      const t1 = window.setTimeout(() => {
-        setP((cur) => (cur.state === "enabling" ? { ...cur, state: "scanning" } : cur));
-        const t2 = window.setTimeout(() => setNearby(mockNearby(crewId)), 1100);
-        timers.current.push(t2);
-      }, 700);
-      timers.current.push(t1);
-    };
+    clearReading();
+    setLiveLink(false);
+    setP((cur) => ({ ...cur, state: "enabling" }));
     const useBrowser = () => {
       requestNearbyDevice().then((device) => {
         if (!scanning.current) return;
@@ -146,7 +162,7 @@ export function useWatchPairing(crewId: string) {
         const tick = window.setInterval(() => {
           void radioDevices().then((list) => {
             if (!scanning.current) return;
-            setNearby(list.map((d) => ({ id: d.id, name: d.name, rssi: d.rssi, live: true })));
+            setNearby(list.map((d) => ({ id: d.id, name: d.name, rssi: d.rssi, esp: d.esp, live: true })));
           });
         }, 800);
         timers.current.push(tick);
@@ -156,47 +172,76 @@ export function useWatchPairing(crewId: string) {
         useBrowser();
         return;
       }
-      useMock();
+      scanning.current = false;
+      setError(NO_RADIO);
+      setP(loadPairing(crewId));
     });
   }, [crewId]);
 
   const pair = useCallback((w: NearbyWatch) => {
     clearTimers();
     scanning.current = false;
-    void stopRadioScan();
-    const next: WatchPairing = { state: "paired", watchId: w.id, watchName: w.name, pairedAt: new Date().toISOString() };
-    save(crewId, next);
-    setP(next);
-    setNearby([]);
-    const held = takeDevice(w.id);
-    const open = (device: NonNullable<ReturnType<typeof takeDevice>>) => {
-      listen(device, publishReading).catch(() => {
-        setError("Appareil choisi, mais aucune mesure standard n’a pu être lue (pouls, SpO₂, tension, glycémie ou température).");
+    const openBrowser = (device: NonNullable<ReturnType<typeof takeDevice>>) => {
+      void listen(device, publishReading).then(() => {
+        publishReading({ deviceName: device.name || w.name, at: Date.now() });
+      }).catch(() => {
+        setError("La liaison Bluetooth a échoué. Rapprochez l’appareil et réessayez.");
+        setLiveLink(false);
       });
     };
-    if (held) {
-      open(held);
-      return;
-    }
-    if (w.live && hasWebBluetooth()) {
-      requestNearbyDevice(w.name).then((device) => {
-        holdDevice(device);
-        open(device);
-      }).catch((err: Error) => {
-        if (err.name === "NotFoundError") return;
-        setError("Appareil détecté. La lecture des mesures a été annulée.");
-      });
-    }
-  }, [crewId]);
+    const done = () => {
+      const next: WatchPairing = { state: "paired", watchId: w.id, watchName: w.name, pairedAt: new Date().toISOString() };
+      save(crewId, next);
+      setP(next);
+      setNearby([]);
+      setLiveLink(true);
+      publishReading({ deviceName: w.name, at: Date.now() });
+      buzzEspFort();
+    };
+    void (async () => {
+      await stopRadioScan();
+      if (w.live && MAC.test(w.id)) {
+        const failure = await connectRadio(w.id, w.name);
+        if (failure) {
+          setError(failure);
+          setP(loadPairing(crewId));
+          setLiveLink(false);
+          return;
+        }
+        done();
+        follow(w.name);
+        return;
+      }
+      done();
+      const held = takeDevice(w.id);
+      if (held) {
+        openBrowser(held);
+        return;
+      }
+      if (w.live && hasWebBluetooth()) {
+        requestNearbyDevice(w.name).then((device) => {
+          holdDevice(device);
+          openBrowser(device);
+        }).catch((err: Error) => {
+          if (err.name === "NotFoundError") return;
+          setError("La liaison Bluetooth a échoué. Rapprochez l’appareil et réessayez.");
+        });
+      }
+    })();
+  }, [crewId, follow]);
 
   const disconnect = useCallback(() => {
     clearTimers();
     scanning.current = false;
+    stopFollowLink();
     if (p.watchId) disconnectBle(p.watchId);
+    void disconnectRadio();
+    void stopRadioScan();
     clearReading();
     save(crewId, { ...EMPTY });
     setP({ ...EMPTY });
     setNearby([]);
+    setLiveLink(false);
     setError(null);
   }, [crewId, p.watchId]);
 
@@ -208,5 +253,16 @@ export function useWatchPairing(crewId: string) {
     setP(loadPairing(crewId));
   }, [crewId]);
 
-  return { ...p, nearby, error, enableBluetooth, pair, disconnect, cancelScan, active: p.state === "paired" && !!p.watchId, liveRadio: hasWebBluetooth() || bridge, radioPending };
+  return {
+    ...p,
+    nearby,
+    error,
+    enableBluetooth,
+    pair,
+    disconnect,
+    cancelScan,
+    active: liveLink && !!p.watchId && p.watchId !== "pc-print",
+    liveRadio: hasWebBluetooth() || bridge,
+    radioPending,
+  };
 }

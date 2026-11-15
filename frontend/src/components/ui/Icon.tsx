@@ -236,6 +236,7 @@ export const ICONS = {
   logout: LogOut,
   notifications: Bell,
   watch: Watch,
+  fingerprint: Fingerprint,
   light_mode: Sun,
   dark_mode: Moon,
   chevron_right: ChevronRight,

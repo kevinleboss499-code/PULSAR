@@ -1,7 +1,10 @@
-"""Prévisions SIMULÉES. Aucun Isolation Forest ni LSTM ne tourne ici."""
+"""Prévisions. La FC est calculée par XGBoost, LSTM et Prophet.
+Les autres indicateurs restent un scénario de démonstration (pas un diagnostic)."""
+import math
 from datetime import datetime, timedelta, timezone
 
 from app.demo import CREW
+from app.hr_models import heart_metric_forecast
 from app.rules import THRESHOLDS
 
 METRICS = [
@@ -40,12 +43,17 @@ def build_predictions(astronaut_id: str, horizon: str) -> dict:
     crew = CREW[astronaut_id]
     now = datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0)
     step = timedelta(days=1) if horizon == "7d" else timedelta(hours=1)
-    past, fut = (7, 7) if horizon == "7d" else (8, 8)
-    forecasts = []
+    forecasts = [heart_metric_forecast(astronaut_id, horizon, now)]
     anomalies = []
+    wave = {"spo2": 0.25, "bp_systolic": 2.4, "skin_temp": 0.12, "glucose": 4.0, "sleep": 0.0, "radiation": 1.4}
     for metric, label, unit, resolution, direction, thr_key in METRICS:
+        if metric == "heart_rate":
+            continue
         res = "day" if metric == "sleep" or horizon == "7d" else resolution
         use_step = timedelta(days=1) if res == "day" else step
+        past, fut = (7, 7) if res == "day" else (24, 24)
+        if metric == "sleep" and horizon != "7d":
+            fut = 3
         if metric in FIXED:
             base = FIXED[metric][astronaut_id]
         else:
@@ -53,18 +61,21 @@ def build_predictions(astronaut_id: str, horizon: str) -> dict:
         orange = _thr(thr_key, direction)["orange"]
         points = []
         for i in range(-past, fut + 1):
-            stamp = _iso(now + use_step * i)
-            drift = (0.4 if astronaut_id == "LK" and metric == "heart_rate" else 0.05) * i
-            value = round(base + drift, 1)
+            stamp_dt = now + use_step * i
+            stamp = _iso(stamp_dt)
+            drift = (-0.08 if astronaut_id == "LK" and metric == "sleep" else 0.02) * i
+            circ = wave.get(metric, 0) * math.sin((stamp_dt.hour - 4) / 24 * 2 * math.pi)
+            value = round(base + drift + circ, 1)
             point = {"timestamp": stamp}
             if i <= 0:
                 point["observed"] = value
             if i >= 0:
+                band = round(0.8 + 0.12 * i, 1)
                 point["predicted"] = value
-                point["lower"] = round(value - 1.2, 1)
-                point["upper"] = round(value + 1.2, 1)
+                point["lower"] = round(value - band, 1)
+                point["upper"] = round(value + band, 1)
             points.append(point)
-        level = "orange" if astronaut_id == "LK" and metric in {"heart_rate", "sleep"} else "vert"
+        level = "orange" if astronaut_id == "LK" and metric == "sleep" else "vert"
         forecasts.append({
             "metric": metric,
             "label": label,
@@ -73,10 +84,10 @@ def build_predictions(astronaut_id: str, horizon: str) -> dict:
             "points": points,
             "thresholds": _thr(thr_key, direction),
             "level": level,
-            "trend": "hausse" if astronaut_id == "LK" and metric == "heart_rate" else "stable",
-            "time_to_threshold_hours": 8 if astronaut_id == "LK" and metric == "heart_rate" else None,
-            "threshold_level": "orange" if astronaut_id == "LK" and metric == "heart_rate" else None,
-            "summary": f"SIMULÉ — {label} : {base} {unit}. Aucun modèle réel (Isolation Forest, LSTM) ne tourne. Seuil indicatif {orange}.",
+            "trend": "baisse" if astronaut_id == "LK" and metric == "sleep" else "stable",
+            "time_to_threshold_hours": None,
+            "threshold_level": None,
+            "summary": f"{label} : {base} {unit}. Scénario de démonstration, seuil indicatif {orange}. Aide à la décision, pas un diagnostic.",
         })
     if astronaut_id == "LK":
         anomalies.append({
@@ -94,15 +105,20 @@ def build_predictions(astronaut_id: str, horizon: str) -> dict:
             "explanation": "SIMULÉ — texte de démonstration, pas une sortie d'autoencodeur.",
             "plain_explanation": "SIMULÉ — votre pouls au repos monte depuis 3 jours et vos nuits sont plus courtes.",
         })
-    risk = "orange" if astronaut_id == "LK" else "vert"
+    heart = forecasts[0]
+    rank = {"vert": 0, "orange": 1, "rouge": 2}
+    risk = max((f["level"] for f in forecasts), key=lambda lv: rank[lv])
+    nxt = None
+    if heart.get("time_to_threshold_hours") is not None and heart.get("threshold_level"):
+        nxt = {"metric": "heart_rate", "label": "FC de repos", "level": heart["threshold_level"], "hours": heart["time_to_threshold_hours"]}
     return {
         "astronaut_id": astronaut_id,
         "generated_at": _iso(now),
         "horizon": horizon,
-        "model": "simulated-rules v0",
+        "model": "xgboost + lstm + prophet",
         "risk_level": risk,
         "drift_score": crew["drift"],
-        "next_threshold": {"metric": "heart_rate", "label": "FC de repos", "level": "orange", "hours": 8} if astronaut_id == "LK" else None,
+        "next_threshold": nxt,
         "forecasts": forecasts,
         "anomalies": anomalies,
     }

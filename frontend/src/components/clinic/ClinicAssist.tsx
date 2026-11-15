@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import { Icon, Lamp, type IconName } from "@/components/ui";
 import type { Light } from "@/data/types";
+import { useLang } from "@/i18n";
 
 export type ClinicInsight = {
   id: string;
@@ -14,7 +15,7 @@ export type ClinicInsight = {
 };
 
 export function ClinicAssist({
-  title = "Aide clinique",
+  title,
   items,
   footer,
   onOpen,
@@ -24,20 +25,22 @@ export function ClinicAssist({
   footer?: ReactNode;
   onOpen?: () => void;
 }) {
+  const { tr } = useLang();
+  const heading = title ?? tr("Aide clinique", "Clinical assist");
   return (
     <section className="clinic-assist r-card" aria-labelledby="clinic-assist-h">
       <header className="clinic-assist-h">
         <div>
-          <h2 id="clinic-assist-h">{title}</h2>
+          <h2 id="clinic-assist-h">{heading}</h2>
         </div>
         {onOpen && (
           <button type="button" className="btn btn-ghost sm" onClick={onOpen}>
-            <Icon name="insights" size={16} /> Détail
+            <Icon name="insights" size={16} /> {tr("Détail", "Detail")}
           </button>
         )}
       </header>
       {items.length === 0 ? (
-        <p className="r-note">Aucun signal hors nominal pour le moment.</p>
+        <p className="r-note">{tr("Aucun signal hors nominal pour le moment.", "No off-nominal signal right now.")}</p>
       ) : (
         <ul className="clinic-assist-list">
           {items.map((it) => (

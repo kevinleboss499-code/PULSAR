@@ -1,7 +1,8 @@
 /* Viseur caméra : demande d’autorisation, flux local, carré de cadrage.
    Les taux de fatigue sont simulés (scanSim) tant que le backend n’analyse pas l’image.
    L’image n’est jamais enregistrée ni envoyée.
-   Son : fatigue EXTRÊME et visage vu → salve « pim » (buzzer), une fois. Pas de sirène médicale, pas de bip orange. */
+   Son : visage cadré ou scan lancé → salve forte (buzzer + haut-parleur).
+   Fatigue élevée en fin de scan → même salve. Fatigue faible → silence. */
 import { useEffect, useRef, useState } from "react";
 import { Demo, Icon, Lamp, Card } from "@/components/ui";
 import type { Go } from "@/app/types";
@@ -32,7 +33,7 @@ const FATIGUE: Record<ScanSample["fatigue"], { word: string; light: "ok" | "caut
 };
 
 export function FaceScan({ name, crewId, sleep, go }: { name: string; crewId: string; sleep: string; go: Go }) {
-  const { raise } = useSound();
+  const { raise, play } = useSound();
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const [step, setStep] = useState<Step>("off");
@@ -42,6 +43,21 @@ export function FaceScan({ name, crewId, sleep, go }: { name: string; crewId: st
   const [pending, setPending] = useState(false);
   const [sample, setSample] = useState<ScanSample>(() => scanSample());
   const live = step === "live" || step === "scan" || step === "done";
+  const framed = useRef(false);
+  const bipAt = useRef(0);
+  const loudFace = () => {
+    const now = Date.now();
+    if (now - bipAt.current < 5000) return;
+    bipAt.current = now;
+    play("fatiguePim");
+  };
+
+  useEffect(() => {
+    if (!box) return;
+    if (framed.current) return;
+    framed.current = true;
+    loudFace();
+  }, [box]); // eslint-disable-line react-hooks/exhaustive-deps -- une salve au premier visage cadré
 
   useEffect(() => {
     const video = videoRef.current;
@@ -53,11 +69,11 @@ export function FaceScan({ name, crewId, sleep, go }: { name: string; crewId: st
   useEffect(() => () => stopStream(streamRef.current), []);
 
   useEffect(() => {
-    if (!live) return;
+    if (step !== "live" && step !== "scan") return;
     setSample(scanSample());
     const id = window.setInterval(() => setSample(scanSample()), 1000);
     return () => window.clearInterval(id);
-  }, [live]);
+  }, [step]);
 
   useEffect(() => {
     if (step !== "scan") return;
@@ -65,19 +81,17 @@ export function FaceScan({ name, crewId, sleep, go }: { name: string; crewId: st
     return () => window.clearTimeout(t);
   }, [step]);
 
-  /** Visage cadré (ou scan lancé) + fatigue extrême → une salve pim, pas la sirène. */
+  /** Une fois le scan terminé : élevée → salve forte. Faible ou modérée → pas de son. */
   useEffect(() => {
-    if (!live || sample.fatigue !== "elevee") return;
-    const faceSeen = box !== null || step === "scan" || step === "done";
-    if (!faceSeen) return;
+    if (step !== "done" || sample.fatigue !== "elevee") return;
     raise({
-      id: `FATIGUE-${crewId}-${Math.floor(Date.now() / 60_000)}`,
+      id: `FATIGUE-${crewId}-${Date.now()}`,
       level: "rouge",
-      title: "Fatigue extrême · scan visage",
+      title: "Fatigue élevée · scan visage",
       detail: `${name} · ${crewId}`,
       sound: "fatiguePim",
     });
-  }, [live, step, box, sample.fatigue, crewId, name, raise]);
+  }, [step]); // eslint-disable-line react-hooks/exhaustive-deps -- une fois, au passage à « done »
 
   useEffect(() => {
     if (!live) return;
@@ -145,6 +159,7 @@ export function FaceScan({ name, crewId, sleep, go }: { name: string; crewId: st
     streamRef.current = null;
     if (videoRef.current) videoRef.current.srcObject = null;
     setBox(null);
+    framed.current = false;
     setStep("off");
     setNote(false);
   };
@@ -257,7 +272,7 @@ export function FaceScan({ name, crewId, sleep, go }: { name: string; crewId: st
             )}
             <div className="btn-row">
               {step === "live" && (
-                <button type="button" className="btn btn-primary lg" onClick={() => setStep("scan")}>
+                <button type="button" className="btn btn-primary lg" onClick={() => { setStep("scan"); loudFace(); }}>
                   <Icon name="photo_camera" size={20} /> Lancer le scan
                 </button>
               )}

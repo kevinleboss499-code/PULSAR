@@ -1,8 +1,9 @@
 /* État local de la gamification, PAR astronaute (clé = code équipage), persistant (localStorage) :
    activée/désactivée (EF-44) + missions du jour cochées. Synchronisé entre composants et onglets. */
 import { useCallback, useSyncExternalStore } from "react";
-import { HISTORY, MEASURES, MISSIONS, PRESET_DONE, TODAY_DEMO, profileFor } from "./data";
+import { HISTORY, MEASURES, MISSIONS, PRESET_DONE, TODAY_DEMO, constancyScore, profileFor } from "./data";
 import { CREW } from "@/data/demo/crew";
+import { localizeBadge, localizeGrade, localizeMember, localizeMission, useLang } from "@/i18n";
 
 type State = { enabled: boolean; day: string; done: string[] };
 const KEY = (id: string) => `pulsar.gamification.${id}`;
@@ -32,6 +33,7 @@ export function crewGoal() {
 }
 
 export function useGamification(id: string) {
+  const { lang } = useLang();
   const snap = useSyncExternalStore(subscribe, () => localStorage.getItem(KEY(id)) ?? "", () => "");
   const s = readState(id);
   void snap;
@@ -43,14 +45,24 @@ export function useGamification(id: string) {
   const { streak, badges, grade } = profileFor(id, measuresDoneCount);
   const measuresComplete = measuresDoneCount >= MEASURES.length;
   const doneMissions = s.done.length;
+  const badgesEarned = badges.filter((b) => b.value >= b.goal).length;
   /** XP de régularité uniquement (missions cochées + série) — jamais une valeur de santé. */
   const xp = doneMissions * 25 + streak * 5;
+  const constancy = constancyScore({
+    streak,
+    missionsDone: doneMissions,
+    missionsTotal: MISSIONS.length,
+    badgesEarned,
+    badgesTotal: badges.length,
+  });
   return {
     enabled: s.enabled, setEnabled, toggle, markDone,
-    missions: MISSIONS.map((m) => ({ ...m, done: s.done.includes(m.id) })),
+    missions: MISSIONS.map((m) => localizeMission({ ...m, done: s.done.includes(m.id) }, lang)),
     measuresComplete, streak, missedDaysAgo: h.missedDaysAgo,
-    badges, grade, crew: crewGoal(),
-    xp, doneMissions,
+    badges: badges.map((b) => localizeBadge(b, lang)),
+    grade: localizeGrade(grade, lang),
+    crew: crewGoal(),
+    xp, doneMissions, constancy, badgesEarned,
   };
 }
 
@@ -66,18 +78,21 @@ export function xpFor(id: string) {
 
 /** Lecture seule pour un autre écran (médecin de bord) : la gamification est-elle activée pour ce membre ? */
 export function useCrewGamificationSnapshot() {
+  const { lang } = useLang();
   useSyncExternalStore(subscribe, () => CREW.map((m) => localStorage.getItem(KEY(m.id)) ?? "").join("|"), () => "");
   const members = CREW.map((m) => {
     const done = measuresDone(m.id);
+    const view = localizeMember(m, lang);
+    const grade = localizeGrade(profileFor(m.id, done).grade, lang);
     return {
       id: m.id,
       name: m.name,
-      cabin: m.cabin,
+      cabin: view.cabin,
       done,
       total: MEASURES.length,
       enabled: readState(m.id).enabled,
       xp: xpFor(m.id),
-      grade: profileFor(m.id, done).grade.current.label,
+      grade: grade.current.label,
     };
   });
   const poolXp = members.reduce((a, m) => a + m.xp, 0);

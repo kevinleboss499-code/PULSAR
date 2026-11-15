@@ -30,7 +30,7 @@ export const color = {
 } as const;
 
 /** Silhouette 3D (MakeHuman) : corps gris mat + teinte discrète par zone selon l'état. */
-export const body3d = { base: "#a4abb4", nominal: "#3bb8f5", medium: "#f0a020", high: "#ef4444" } as const;
+export const body3d = { base: "#a4abb4", nominal: "#3bb8f5", medium: "#f0a020", high: "#ef4444", active: "#22c55e" } as const;
 
 /** Voyants NASA C&W : mot + icône (lucide-react), jamais la couleur seule. */
 export const statusWord = { ok: "Nominal", caution: "Attention", warning: "Alerte" } as const;

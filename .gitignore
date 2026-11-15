@@ -30,6 +30,13 @@ secrets.json
 frontend/public/figma-icons/*
 !frontend/public/figma-icons/.gitkeep
 
+# Python
+__pycache__/
+*.py[cod]
+
+# Verrous Office
+~$*
+
 # Éditeurs / OS
 .DS_Store
 Thumbs.db

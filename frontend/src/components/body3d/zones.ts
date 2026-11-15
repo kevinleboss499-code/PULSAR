@@ -1,5 +1,6 @@
 /* Zones de la silhouette 3D — partagées sans charger three.js. */
-export type ZoneState = "nominal" | "medium" | "high" | "none";
+/** `active` = zone sollicitée par la séance d’exercice (contre-mesure), pas un état clinique. */
+export type ZoneState = "nominal" | "medium" | "high" | "none" | "active";
 export type View = "front" | "34" | "side" | "back";
 export const VIEW_ANGLE: Record<View, number> = { front: 0, "34": -Math.PI / 4, side: -Math.PI / 2, back: Math.PI };
 export const VIEW_LABEL: Record<View, string> = { front: "Face", "34": "¾", side: "Profil", back: "Dos" };

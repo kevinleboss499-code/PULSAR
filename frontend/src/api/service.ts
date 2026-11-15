@@ -25,6 +25,7 @@ export const api = {
   telemetry: (q: Parameters<PulsarApi["telemetry"]>[0]) => withFallback((a) => a.telemetry(q)),
   alerts: (q?: Parameters<PulsarApi["alerts"]>[0]) => withFallback((a) => a.alerts(q)),
   predictions: (...args: Parameters<PulsarApi["predictions"]>) => withFallback((a) => a.predictions(...args)),
+  heartForecast: (q: Parameters<PulsarApi["heartForecast"]>[0]) => withFallback((a) => a.heartForecast(q)),
   recommendations: (id: string) => withFallback((a) => a.recommendations(id)),
   updateRecommendation: (...args: Parameters<PulsarApi["updateRecommendation"]>) => withFallback((a) => a.updateRecommendation(...args)),
 };

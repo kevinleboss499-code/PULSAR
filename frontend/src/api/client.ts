@@ -2,7 +2,7 @@
    - VITE_USE_MOCK=true → simulateur local (mock.ts) uniquement.
    - Sinon : vraie API ; si elle est injoignable, bascule automatique sur le simulateur pendant 30 s puis réessaie.
    Contrat JSON : docs/API-CONTRACT.md. */
-import type { Alert, AlertLevel, Astronaut, DataSource, Horizon, Prediction, Recommendation, RecommendationUpdate, TelemetrySample } from "./types";
+import type { Alert, AlertLevel, Astronaut, DataSource, HeartLiveForecast, Horizon, Prediction, Recommendation, RecommendationUpdate, TelemetrySample } from "./types";
 import { camelize, snakeize, toAlert, toAstronaut, toSample } from "./mapping";
 
 export type TelemetryQuery = { astronautId: string; limit?: number; stepSec?: number; since?: string; until?: string };
@@ -14,6 +14,8 @@ export interface PulsarApi {
   alerts(q?: AlertsQuery): Promise<Alert[]>;
   /** GET /predictions/{astronaut_id}?horizon=24h|7d */
   predictions(astronautId: string, horizon?: Horizon): Promise<Prediction>;
+  /** GET /heart-rate/live — prévision courte XGBoost, LSTM et Prophet. */
+  heartForecast(q: { astronautId: string; until?: string }): Promise<HeartLiveForecast>;
   /** GET /recommendations/{astronaut_id} */
   recommendations(astronautId: string): Promise<Recommendation[]>;
   /** PATCH /recommendations/{astronaut_id}/{recommendation_id} */
@@ -57,6 +59,7 @@ export const httpApi: PulsarApi = {
   telemetry: async ({ astronautId, limit = 60, since, until }) => (await get<J[]>("/telemetry", { astronaut_id: astronautId, limit, since, until })).map(toSample),
   alerts: async (q = {}) => (await get<J[]>("/alerts", { astronaut_id: q.astronautId, level: q.level })).map(toAlert),
   predictions: async (id, horizon = "24h") => camelize<Prediction>(await get<J>(`/predictions/${encodeURIComponent(id)}`, { horizon })),
+  heartForecast: async ({ astronautId, until }) => camelize<HeartLiveForecast>(await get<J>("/heart-rate/live", { astronaut_id: astronautId, until })),
   recommendations: async (id) => camelize<Recommendation[]>(await get<J[]>(`/recommendations/${encodeURIComponent(id)}`)),
   updateRecommendation: async (id, recId, u) => camelize<Recommendation>(await get<J>(`/recommendations/${encodeURIComponent(id)}/${encodeURIComponent(recId)}`, {}, 4000, { method: "PATCH", body: JSON.stringify(snakeize(u)) })),
 };

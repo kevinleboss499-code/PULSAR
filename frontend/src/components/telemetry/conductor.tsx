@@ -4,6 +4,7 @@
    Un seul conducteur pilote toutes les courbes temps réel d’un écran (contexte React). */
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { Icon } from "@/components/ui";
+import { useLang } from "@/i18n";
 
 export type ConductorMode = "realtime" | "fixed";
 export type Conductor = { mode: ConductorMode; spanSec: number; end: number | null; setMode: (m: ConductorMode) => void; setSpan: (s: number) => void; shift: (sec: number) => void };
@@ -39,26 +40,27 @@ function Clock() {
 
 export function TimeConductor() {
   const c = useContext(Ctx);
+  const { tr } = useLang();
   if (!c) return null;
   const end = c.end ?? Date.now();
   return (
-    <div className={`conductor is-${c.mode}`} role="group" aria-label="Conducteur de temps">
-      <div className="seg2" role="group" aria-label="Mode">
-        <button aria-pressed={c.mode === "realtime"} onClick={() => c.setMode("realtime")}><Icon name="play_arrow" size={14} /> Temps réel</button>
-        <button aria-pressed={c.mode === "fixed"} onClick={() => c.setMode("fixed")}><Icon name="pause" size={14} /> Fixe</button>
+    <div className={`conductor is-${c.mode}`} role="group" aria-label={tr("Conducteur de temps", "Time conductor")}>
+      <div className="seg2" role="group" aria-label={tr("Mode", "Mode")}>
+        <button aria-pressed={c.mode === "realtime"} onClick={() => c.setMode("realtime")}><Icon name="play_arrow" size={14} /> {tr("Temps réel", "Realtime")}</button>
+        <button aria-pressed={c.mode === "fixed"} onClick={() => c.setMode("fixed")}><Icon name="pause" size={14} /> {tr("Fixe", "Fixed")}</button>
       </div>
       {c.mode === "realtime" ? (
         <>
-          <div className="seg2" role="group" aria-label="Fenêtre">
+          <div className="seg2" role="group" aria-label={tr("Fenêtre", "Window")}>
             {[60, 120, 300].map((s) => <button key={s} aria-pressed={c.spanSec === s} onClick={() => c.setSpan(s)}>{s / 60} min</button>)}
           </div>
-          <span className="conductor-range"><span className="muted">fin</span> <Clock /> <span className="muted">· fenêtre glissante</span></span>
+          <span className="conductor-range"><span className="muted">{tr("fin", "end")}</span> <Clock /> <span className="muted">· {tr("fenêtre glissante", "sliding window")}</span></span>
         </>
       ) : (
         <>
           <span className="conductor-range mono" data-testid="conductor-range">{fmt(end - c.spanSec * 1000)} → {fmt(end)} UTC</span>
-          <button className="btn btn-ghost sm" onClick={() => c.shift(-c.spanSec / 2)} aria-label="Reculer d’une demi-fenêtre"><Icon name="arrow_back" size={16} /></button>
-          <button className="btn btn-ghost sm" onClick={() => c.shift(c.spanSec / 2)} aria-label="Avancer d’une demi-fenêtre"><Icon name="arrow_forward" size={16} /></button>
+          <button className="btn btn-ghost sm" onClick={() => c.shift(-c.spanSec / 2)} aria-label={tr("Reculer d’une demi-fenêtre", "Step back half a window")}><Icon name="arrow_back" size={16} /></button>
+          <button className="btn btn-ghost sm" onClick={() => c.shift(c.spanSec / 2)} aria-label={tr("Avancer d’une demi-fenêtre", "Step forward half a window")}><Icon name="arrow_forward" size={16} /></button>
         </>
       )}
     </div>

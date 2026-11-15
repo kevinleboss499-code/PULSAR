@@ -1,6 +1,6 @@
 # PULSAR — serveur de bord
 
-Prototype FastAPI du vaisseau. Les lectures suivent `docs/API-CONTRACT.md`. Les écritures passent par `POST /sync` avec une clé factice (`demo-key-…`), stockée seulement en SHA-256. Les prévisions sont **simulées**. La météo spatiale (`GET /reference/space-weather`) appelle DONKI depuis ce serveur, avec repli cache puis fichier local.
+Prototype FastAPI du vaisseau. Les lectures suivent `docs/API-CONTRACT.md`. Les écritures passent par `POST /sync` avec une clé factice (`demo-key-…`), stockée seulement en SHA-256. La fréquence cardiaque (`GET /predictions/{id}` et `GET /heart-rate/live`) est prévue par XGBoost, LSTM et Prophet sur la série de démonstration. Les autres indicateurs restent un scénario. La météo spatiale (`GET /reference/space-weather`) appelle DONKI depuis ce serveur, avec repli cache puis fichier local.
 
 ```bash
 cd backend

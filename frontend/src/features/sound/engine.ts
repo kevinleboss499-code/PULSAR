@@ -17,7 +17,7 @@ export const SOUND_CATEGORY: Record<SoundId, SoundCategory> = {
 };
 export const SOUND_LABEL: Record<SoundId, string> = {
   alarmHigh: "Alerte rouge", alarmMedium: "Alerte orange", alarmLow: "Notification", ack: "Acquittement", reportIn: "Rapport reçu", reportOut: "Rapport envoyé",
-  escalation: "Escalade", fatiguePim: "Pim fatigue (scan)", sensorTick: "Bip capteur", sensorRise: "Risque en hausse", sensorStop: "Arrêt alerte",
+  escalation: "Escalade", fatiguePim: "Pip alerte (scan)", sensorTick: "Bip capteur", sensorRise: "Risque en hausse", sensorStop: "Arrêt alerte",
   login: "Connexion", badge: "Exercice terminé", watchTick: "Tic montre", hover: "Survol",
 };
 
@@ -102,10 +102,9 @@ const PATTERNS: Record<SoundId, (t: number, v: number) => void> = {
   reportIn: (t, v) => { pulse(t, 587, 0.12, v * 0.45, [1, 0.3]); pulse(t + 0.15, 880, 0.2, v * 0.45, [1, 0.3]); },
   reportOut: (t, v) => { [523, 659, 784].forEach((f, i) => pulse(t + i * 0.11, f, 0.1, v * 0.4, [1, 0.2])); },
   escalation: (t, v) => { sweep(t, 440, 880, 0.32, v * 0.4); pulse(t + 0.34, 880, 0.12, v * 0.4, [1, 0.3]); },
-  /** Scan visage, fatigue extrême : buzzer Arduino. Six « pim », de plus en plus serrés et un peu plus aigus. */
-  fatiguePim: (t, v) => {
-    const gaps = [0, 0.2, 0.36, 0.48, 0.58, 0.66];
-    gaps.forEach((g, i) => piezo(t + g, 2000 + i * 140, 0.04, Math.min(0.45, v * 0.55)));
+  /** Scan visage : salve carrée au gain max (le volume du curseur ne l’adoucit pas). */
+  fatiguePim: (t) => {
+    for (let i = 0; i < 8; i++) piezo(t + i * 0.18, i % 2 === 0 ? 880 : 1320, 0.15, 1);
   },
   /** Un « pim » piezo — répété plus vite quand le risque fatigue monte. */
   sensorTick: (t, v) => { piezo(t, 2100, 0.05, v * 0.22); },

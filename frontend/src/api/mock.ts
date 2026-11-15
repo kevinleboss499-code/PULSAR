@@ -1,9 +1,11 @@
 /* Adaptateur SIMULÉ (DÉMO) : mêmes signatures que le client HTTP, données générées à partir de l’équipage de démo.
    Utilisé si VITE_USE_MOCK=true ou si l’API est injoignable. Valeurs fictives, déterministes par seconde. */
 import { CREW } from "@/data/demo/crew";
+import { phrase, readLang } from "@/i18n";
 import type { Alert, Astronaut, TelemetrySample } from "./types";
 import { LIGHT_TO_LEVEL } from "./mapping";
 import type { PulsarApi, TelemetryQuery, AlertsQuery } from "./client";
+import { mockHeartLive } from "./heartModels";
 import { mockPredictions, mockRecommendations, mockUpdateRecommendation } from "./predictMock";
 
 const MISSION_START = Date.UTC(2026, 6, 10); // J1 de la mission (démo)
@@ -46,8 +48,13 @@ export const mockApi: PulsarApi = {
       { id: "AL-126-012", astronautId: "SR", level: "rouge", metric: "spo2", message: "SpO₂ 91 % pendant 4 min (seuil 92 %).", value: 91, threshold: 92, driftScore: 0.74, model: "rule", createdAt: d(651), acknowledged: true, assignee: "CMO-001", workflowStatus: "resolu", seenAt: d(650), ackBy: "CMO-001" },
       { id: "AL-126-009", astronautId: "AM", level: "vert", metric: "radiation", message: "Passage anomalie de l’Atlantique Sud : débit de dose transitoire, cumul dans la plage.", value: 24.6, threshold: 40, driftScore: 0.14, model: "isolation_forest", createdAt: d(820), acknowledged: true, assignee: "NASA-FS-001", workflowStatus: "resolu", seenAt: d(810), ackBy: "NASA-FS-001" },
     ];
-    return all.filter((a) => (!astronautId || a.astronautId === astronautId) && (!level || a.level === level));
-  },  async predictions(id, horizon) { return mockPredictions(id, horizon); },
+    const lang = readLang();
+    return all
+      .filter((a) => (!astronautId || a.astronautId === astronautId) && (!level || a.level === level))
+      .map((a) => ({ ...a, message: phrase(lang, a.message) }));
+  },
+  async predictions(id, horizon) { return mockPredictions(id, horizon); },
+  async heartForecast({ astronautId, until }) { return mockHeartLive(astronautId, until); },
   async recommendations(id) { return mockRecommendations(id); },
   async updateRecommendation(id, recId, u) { return mockUpdateRecommendation(id, recId, u); },
 };

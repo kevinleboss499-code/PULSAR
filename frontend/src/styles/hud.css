@@ -1954,6 +1954,7 @@
 .zone-hud { position: absolute; inset: 0; z-index: 3; pointer-events: none; color: var(--text-2); }
 .zone-hud.tone-medium { color: var(--medium); }
 .zone-hud.tone-high { color: var(--high); }
+.zone-hud.tone-active { color: var(--ok); }
 .zone-hud svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; z-index: 1; }
 .zone-hud polyline {
   fill: none;

@@ -1,5 +1,6 @@
 /* Cycle de vie commun : Nouveau → Vu → Pris en charge → Résolu / Escaladé + responsable visible. */
 import { Icon, type IconName } from "./Icon";
+import { useLang } from "@/i18n";
 
 export type WorkflowStatus = "nouveau" | "vu" | "pris_en_charge" | "resolu" | "escalade";
 
@@ -9,6 +10,14 @@ export const WORKFLOW_LABEL: Record<WorkflowStatus, string> = {
   pris_en_charge: "Pris en charge",
   resolu: "Résolu",
   escalade: "Escaladé",
+};
+
+const WORKFLOW_EN: Record<WorkflowStatus, string> = {
+  nouveau: "New",
+  vu: "Seen",
+  pris_en_charge: "In progress",
+  resolu: "Resolved",
+  escalade: "Escalated",
 };
 
 const WORKFLOW_ICON: Record<WorkflowStatus, IconName> = {
@@ -21,11 +30,14 @@ const WORKFLOW_ICON: Record<WorkflowStatus, IconName> = {
 
 /** Affiche l’état + le responsable (identifiant ou libellé). */
 export function WorkflowBadge({ status, assignee }: { status: WorkflowStatus; assignee?: string | null }) {
+  const { lang } = useLang();
+  const word = lang === "en" ? WORKFLOW_EN[status] : WORKFLOW_LABEL[status];
+  const none = lang === "en" ? "Unassigned" : "Non assigné";
   return (
     <span className={`wf-badge wf-${status}`} data-status={status}>
       <Icon name={WORKFLOW_ICON[status]} size={14} />
-      <b>{WORKFLOW_LABEL[status]}</b>
-      {assignee ? <span className="mono wf-who">{assignee}</span> : <span className="wf-who muted">Non assigné</span>}
+      <b>{word}</b>
+      {assignee ? <span className="mono wf-who">{assignee}</span> : <span className="wf-who muted">{none}</span>}
     </span>
   );
 }

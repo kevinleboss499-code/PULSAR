@@ -37,7 +37,7 @@ export function RoleLayout({
   children: ReactNode;
 }) {
   const { user, logout } = useAuth();
-  const { t } = useLang();
+  const { t, tr } = useLang();
   const go = useNavigate();
   const loc = useLocation();
   const calm = useReducedMotion();
@@ -61,7 +61,7 @@ export function RoleLayout({
             <small>{roleLabel}</small>
           </span>
         </NavLink>
-        <nav className="r-nav r-rail" aria-label="Navigation">
+        <nav className="r-nav r-rail" aria-label={tr("Navigation", "Navigation")}>
           {nav.map((group, gi) => (
             <div key={group.label || `g-${gi}`} className="r-nav-group" data-group={group.label || undefined}>
               {group.label ? <span className="r-nav-label">{group.label}</span> : null}

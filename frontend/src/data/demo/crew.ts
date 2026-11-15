@@ -10,7 +10,7 @@ export const CREW: Member[] = [
 export const EVENTS = [
   { t: "09:38", who: "LK", light: "caution" as Light, text: "FC de repos 94 bpm (plage 60–100) — tendance à la hausse" },
   { t: "09:12", who: "LK", light: "caution" as Light, text: "Scan visage : fatigue modérée" },
-  { t: "08:05", who: "AM", light: "ok" as Light, text: "Tension 118/76 mmHg (kit, Bluetooth)" },
+  { t: "08:05", who: "AM", light: "ok" as Light, text: "Tension 118/76 mmHg (kit)" },
   { t: "07:50", who: "SR", light: "ok" as Light, text: "Glycémie 92 mg/dL (saisie manuelle)" },
 ];
 export const ECHO_ZONES = [

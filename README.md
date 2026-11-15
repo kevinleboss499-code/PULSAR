@@ -1,50 +1,50 @@
-# PULSAR AHM — Astronaut Health Monitoring (front-end v6)
+# PULSAR AHM — Astronaut Health Monitoring
 
-Projet NASA Space Apps 2026 · suivi de santé des astronautes en mission longue.
-Trois tableaux de bord, un par rôle, et une montre :
+NASA Space Apps 2026 · health monitoring for astronauts on long-duration missions.
+Three dashboards, one per role, plus a watch:
 
-| Rôle | Appareil | Tableau de bord |
+| Role | Device | Dashboard |
 |---|---|---|
-| **Astronaute** | tablette personnelle + montre + kits | `/astronaute` — ses propres données uniquement |
-| **Médecin de bord** | tablette médicale / écran d’infirmerie + sonde d’échographie | `/medecin-bord` — tout l’équipage |
-| **Médecins NASA (Houston)** | postes du Mission Control Center | `/nasa` — rapports reçus par satellite |
+| **Astronaut** | personal tablet + watch + kits | `/astronaute` — their own data only |
+| **Crew surgeon** | medical tablet / sickbay display + ultrasound probe | `/medecin-bord` — the whole crew |
+| **NASA physicians (Houston)** | Mission Control Center workstations | `/nasa` — reports received over the satellite link |
 
-L’application s’ouvre sur une **page d’accueil publique** (`/` : présentation de PULSAR, dangers HRP, parcours des données, démo interactive) ; le bouton « Se connecter » mène à **l’écran de connexion unique** `/connexion` (logo, présentation courte, photo de la Terre vue de l’ISS, formulaire). Chaque utilisateur saisit **son identifiant personnel** et son code : le rôle est déduit de l’identifiant (`AST-…`, `CMO-…`, `NASA-FS-…`) et il arrive directement sur son tableau de bord. Il n’y a **ni écran « Choix du profil » ni liste de comptes** dans l’interface.
+The app opens on a **public home page** (`/`: what PULSAR is, HRP hazards, how data moves, an interactive demo). “Sign in” leads to the **single sign-in screen** `/connexion` (logo, short mission intro, a photo of Earth from the ISS, the form). Each person enters **their personal identifier** and code. The role is inferred from the identifier (`AST-…`, `CMO-…`, `NASA-FS-…`) and they land on their own dashboard. There is **no “Choose a profile” screen and no account list** in the interface.
 
-Ce dépôt contient le **front-end** (`frontend/`) et le **serveur de bord** (`backend/`, FastAPI). Les prévisions restent simulées. Si l’API ne répond pas, le front revient à son simulateur. La clé NASA n’est jamais dans le navigateur : la carte météo appelle `GET /reference/space-weather`.
+This repository holds the **front end** (`frontend/`) and the **ship server** (`backend/`, FastAPI). Heart-rate forecasts are computed by **XGBoost, an LSTM, and Prophet** on the demo series (`GET /predictions/{id}` and `GET /heart-rate/live`). The other metrics stay a demo scenario. This is decision support, not a diagnosis. If the API does not answer, the front end falls back to its simulator. The NASA key never reaches the browser: the space-weather card calls `GET /reference/space-weather`.
 
-### État au 15 novembre 2026
+### Status on 15 November 2026
 
-- **Température (°C) et humeur (1 à 5)** se saisissent dans Kits (`/astronaute/kits`), avec voyant Nominal / Attention / Alerte, l’action à faire, la personne prévenue, et une ligne dans le journal de l’appareil.
-- **Seuils** centralisés dans `frontend/src/data/thresholds.ts`. La tension des prévisions (135/150) est alignée sur 130/160. Le pouls de l’accueil (90/110) est aligné sur 100/120. La glycémie à jeun suit 70–99. Les prévisions de glycémie restent sur le côté haut (126/180) parce qu’elles n’ont pas le contexte repas.
-- **Prévisions, Isolation Forest et LSTM** sont étiquetés **SIMULÉ** : aucun modèle réel ne tourne.
-- **Anglais** : titres des trois tableaux de bord (état du jour, surveillance équipage, titres de rapports NASA) via le sélecteur FR | EN. Le reste des écrans reste en français.
-- **Serveur de bord** : `cd backend && python -m app.seed && uvicorn app.main:app --port 8000`. Clés factices `demo-key-watch-lk`, `demo-key-kit-lk`, `demo-key-cmo` (empreinte SHA-256). Le front envoie `X-User-Id` depuis la session déjà ouverte, jamais une clé d’API.
-- **Météo spatiale** : carte sur la montre et le tableau du médecin. Provenance Connecté, Cache ou Hors ligne. Référence DONKI, pas une mesure d’équipage.
-- **Hors-ligne** : polices, scripts et icônes sont locaux (pas de CDN). Le build n’appelle pas Internet.
+- **Temperature (°C) and mood (1 to 5)** are entered in Kits (`/astronaute/kits`), with a Nominal / Caution / Warning lamp, the action to take, who is notified, and a line in the device log.
+- **Thresholds** live in `frontend/src/data/thresholds.ts`. Forecast blood pressure (was 135/150) matches 130/160. Home-screen pulse (was 90/110) matches 100/120. Fasting glucose follows 70–99. Glucose forecasts stay on the high side (126/180) because they have no meal context.
+- **Heart rate** is forecast by XGBoost, LSTM, and Prophet (observed line, three dashed forecasts, model interval). The other indicators remain a demo scenario.
+- **French and English**: the FR | EN switch covers the dashboards. Medical values on screen are still demo data.
+- **Ship server**: `cd backend && python -m app.seed && uvicorn app.main:app --port 8000`. Demo keys `demo-key-watch-lk`, `demo-key-kit-lk`, `demo-key-cmo` (SHA-256 hash only). The front end sends `X-User-Id` from the open session, never an API key.
+- **Space weather**: a card on the watch and on the crew-surgeon board. Source is Connected, Cache, or Offline. DONKI reference, not a crew measurement.
+- **Offline**: fonts, scripts, and icons are local (no CDN). The production build does not call the Internet.
 
-### Nouveautés
+### What is in the app
 
-- **Prédictions et solutions proposées** : courbes prévu vs observé (24 h / 7 j) avec intervalle de confiance pour FC, SpO₂, tension, température, glycémie, sommeil et rayonnement ; score de dérive, niveau de risque, délai avant seuil ; anomalies avec signaux contributeurs ; solutions non diagnostiques (Appliquer / Marquer fait / Escalader ; le médecin de bord valide ou remplace). Synthèse dans les rapports NASA.
-- **Gamification coopérative** (CDC § 5.9, EF-42/43/44) : séries et badges de régularité, missions du jour, objectif d’équipage sans classement, désactivable dans Réglages ; complication sur la montre ; le médecin ne voit que la participation.
-- **Télémétrie dense** : fenêtre temps (temps réel / fixe), tableau des dernières valeurs (LAD), inspecteur — design PULSAR (sans cadrage Open MCT).
-- **Workflow** Nouveau · Vu · Pris en charge · Résolu · Escaladé + responsable sur alertes, solutions et rapports.
-- **Montre** : carte appairage (scan stub) en tête du dashboard ; section inactive sans montre.
-- **Sons d’alarme** IEC 60601-1-8 (pas d’icône chrome) ; pause rouge 2 min seulement après lecture.
+- **Forecasts and proposed actions**: observed vs predicted curves (24 h / 7 d) with a confidence interval for heart rate, SpO₂, blood pressure, temperature, glucose, sleep, and radiation; drift score, risk level, time to threshold; anomalies with contributing signals; non-diagnostic actions (Apply / Mark done / Escalate; the crew surgeon validates or replaces). A summary is attached to NASA reports.
+- **Cooperative gamification** (CDC § 5.9, EF-42/43/44): regularity streaks and badges, daily missions, a crew goal with no ranking, switchable off in Settings; a watch complication; the crew surgeon sees participation only.
+- **Dense telemetry**: time window (live / fixed), latest-value table (LAD), inspector — PULSAR layout (not an Open MCT frame).
+- **Workflow** New · Seen · In progress · Resolved · Escalated, plus an owner, on alerts, actions, and reports.
+- **Watch**: pairing card at the top of the astronaut dashboard; the section stays inactive without a watch.
+- **Alarm sounds** follow IEC 60601-1-8 (no chrome icon); a red alarm can be paused for 2 minutes only after it has been seen.
 
-![Accueil](docs/screens/projet-accueil-landing.png)
+![Home](docs/screens/projet-accueil-landing.png)
 
-![Connexion](docs/screens/projet-connexion.png)
+![Sign in](docs/screens/projet-connexion.png)
 
-![Prédictions — médecin de bord](docs/screens/projet-predictions-medecin.png)
+![Forecasts — crew surgeon](docs/screens/projet-predictions-medecin.png)
 
 ---
 
-## 1. Installer et lancer
+## 1. Install and run
 
-Prérequis : **Node.js 20.19 ou plus récent** (https://nodejs.org, version LTS) et Cursor.
+Requirements: **Node.js 20.19 or newer** (https://nodejs.org, LTS) and Cursor. The ship server needs **Python 3.12**.
 
-Dans un terminal (PowerShell) :
+Front end (PowerShell):
 
 ```powershell
 cd D:\PULSAR-PROJECT\frontend
@@ -52,135 +52,138 @@ npm i
 npm run dev
 ```
 
-Ouvrir http://localhost:5173 → écran d’accueil et de connexion.
+Open http://localhost:5173 for the home page and sign-in screen.
 
-Variables d’environnement (facultatif) : copier `frontend/.env.example` en `frontend/.env` puis adapter.
+Ship server, in a second terminal:
 
-| Variable | Défaut | Rôle |
+```powershell
+cd D:\PULSAR-PROJECT\backend
+python -m pip install -r requirements.txt
+python -m app.seed
+python -m uvicorn app.main:app --port 8000
+```
+
+Environment (optional): copy `frontend/.env.example` to `frontend/.env` and edit it.
+
+| Variable | Default | Role |
 |---|---|---|
-| `VITE_API_URL` | `http://localhost:8000` | URL du backend FastAPI |
-| `VITE_USE_MOCK` | `false` | `true` = simulateur local uniquement (sinon simulateur automatique si l’API est injoignable) |
-| `VITE_AUTH_API_URL` | vide | vide = comptes de démo ; URL = vraie API d’authentification |
-| `VITE_DEV_TOOLS` | vide | pages de dev dans un build de production |
+| `VITE_API_URL` | `http://localhost:8000` | FastAPI base URL |
+| `VITE_USE_MOCK` | `false` | `true` = local simulator only (otherwise the simulator starts automatically if the API is unreachable) |
+| `VITE_AUTH_API_URL` | empty | empty = demo accounts; a URL = real authentication API |
+| `VITE_DEV_TOOLS` | empty | dev pages inside a production build |
 
-Autres commandes (dans `frontend/`) :
+Other commands (from `frontend/`):
 
-| Commande | Rôle |
+| Command | Role |
 |---|---|
-| `npm run typecheck` | vérification TypeScript |
-| `npm run build` puis `npm run preview` | version de production (http://localhost:4173) |
-| `npm run test:e2e:install` (une fois) puis `npm run test:e2e` | tests Playwright : connexion avec chaque identifiant, gardes, erreurs |
+| `npm run typecheck` | TypeScript check |
+| `npm run build` then `npm run preview` | production build (http://localhost:4173) |
+| `npm run test:e2e:install` (once) then `npm run test:e2e` | Playwright: sign-in with each identifier, guards, errors |
 
-## 2. Identifiants de démonstration
+## 2. Demo identifiers
 
-| Identifiant | Code | Rôle | Nom |
+| Identifier | Code | Role | Name |
 |---|---|---|---|
-| `AST-001` | `482105` | Astronaute | Lina Kovacs |
-| `AST-002` | `130742` | Astronaute | Alex Morgan |
-| `AST-003` | `559031` | Astronaute | Nolan Okafor |
-| `AST-004` | `246813` | Astronaute | Sofia Reyes |
-| `CMO-001` | `731406` | Médecin de bord | Dr Nolan Okafor |
+| `AST-001` | `482105` | Astronaut | Lina Kovacs |
+| `AST-002` | `130742` | Astronaut | Alex Morgan |
+| `AST-003` | `559031` | Astronaut | Nolan Okafor |
+| `AST-004` | `246813` | Astronaut | Sofia Reyes |
+| `CMO-001` | `731406` | Crew surgeon | Dr Nolan Okafor |
 | `NASA-FS-001` | `905218` | NASA Houston (flight surgeon) | Dr Maya Chen |
 | `NASA-FS-002` | `618847` | NASA Houston (flight surgeon) | Dr Daniel Brooks |
 
-Ces comptes ne sont **pas affichés dans l’interface** : ils sont documentés ici et dans `docs/ROLES-ET-IDENTIFIANTS.md` uniquement.
-⚠️ **Démo uniquement** : l’authentification est simulée dans le navigateur. Détails et règles : [`docs/ROLES-ET-IDENTIFIANTS.md`](docs/ROLES-ET-IDENTIFIANTS.md).
-Pour brancher un vrai serveur : `frontend/src/features/auth/authService.ts` (`HttpAuthService`) + variable `VITE_AUTH_API_URL` (voir `frontend/.env.example`).
+These accounts are **not listed in the interface**. They are documented here and in `docs/ROLES-ET-IDENTIFIANTS.md` only.
+**Demo only**: authentication is simulated in the browser. Rules: [`docs/ROLES-ET-IDENTIFIANTS.md`](docs/ROLES-ET-IDENTIFIANTS.md).
+To connect a real server: `frontend/src/features/auth/authService.ts` (`HttpAuthService`) plus `VITE_AUTH_API_URL` (see `frontend/.env.example`).
 
-## 3. Connecter Figma à Cursor (MCP)
+## 3. Connect Figma to Cursor (MCP)
 
-Le design de référence est le fichier Figma **PULSAR AHM — v6** :
+The reference design is the Figma file **PULSAR AHM — v6**:
 https://www.figma.com/design/cj96CiSofo2y0mDSpre7J1
 
-Le projet contient déjà la configuration `.cursor/mcp.json` (serveur MCP officiel Figma, `https://mcp.figma.com/mcp`). Il reste à vous **connecter une fois** :
+The project already includes `.cursor/mcp.json` (official Figma MCP server, `https://mcp.figma.com/mcp`). You still need to **sign in once**:
 
-1. Ouvrir le dossier `D:\PULSAR-PROJECT` dans Cursor (*File › Open Folder*).
-2. *Cursor Settings* (Ctrl+Shift+J) › **Tools & MCP**. Le serveur **figma** apparaît dans la liste (sinon : *Add custom MCP* et coller le contenu de `.cursor/mcp.json`).
-3. Cliquer **Connect** à côté de *figma* → une page Figma s’ouvre → **Allow access** (avec le compte Figma qui a accès au fichier).
-4. Le voyant devient vert. Dans le chat de Cursor, tester : « Avec le MCP Figma, appelle get_design_context sur le nœud 34:5 du fichier cj96CiSofo2y0mDSpre7J1 ».
+1. Open the folder `D:\PULSAR-PROJECT` in Cursor (*File › Open Folder*).
+2. *Cursor Settings* (Ctrl+Shift+J) › **Tools & MCP**. The **figma** server appears in the list (otherwise: *Add custom MCP* and paste `.cursor/mcp.json`).
+3. Click **Connect** next to *figma* → a Figma page opens → **Allow access** (with a Figma account that can open the file).
+4. The status turns green. In Cursor chat, try: “With the Figma MCP, call get_design_context on node 34:5 of file cj96CiSofo2y0mDSpre7J1”.
 
-Option recommandée par Figma : dans le chat Cursor, taper `/add-plugin figma` (installe aussi les *skills* Figma), puis *Tools & MCP › Connect*.
+Figma’s recommended option: in Cursor chat, type `/add-plugin figma` (this also installs the Figma skills), then *Tools & MCP › Connect*.
 
-Cursor connaît alors le projet grâce à :
-- `.cursor/rules/design-system.mdc` (toujours actif) : tokens, polices, icônes, couleurs d’état, thèmes, interdits ;
-- `.cursor/rules/project.mdc` (toujours actif) : architecture, rôles, authentification, commandes ;
-- `.cursor/rules/figma.mdc` : liens Figma, nœud de chaque écran, méthode `get_design_context` ;
-- `AGENTS.md` : résumé pour tout agent IA.
+Cursor then knows the project through:
+- `.cursor/rules/design-system.mdc` (always on): tokens, fonts, icons, status colors, themes, banned effects;
+- `.cursor/rules/project.mdc` (always on): architecture, roles, authentication, commands;
+- `.cursor/rules/figma.mdc`: Figma links, the node for each screen, the `get_design_context` method;
+- `AGENTS.md`: a short brief for any AI agent.
 
-Exemple de demande dans Cursor : *« Améliore l’écran A04 Kits en suivant la maquette Figma 34:17, garde nos tokens. »*
+Example request: *“Improve screen A04 Kits from Figma node 34:17, and keep our tokens.”*
 
-## 4. Données temps réel et backend
+## 4. Live data and the backend
 
-- `frontend/src/api/` : client typé (`fetch`, base `VITE_API_URL`), types `Astronaut`, `TelemetrySample`, `Alert` (niveau `vert` / `orange` / `rouge`, `driftScore`), adaptateur **mock** et hooks **React Query** : `useTelemetry` (rafraîchi toutes les 2 s), `useAlerts` (15 s), `useAstronauts` (30 s), `useDataSource`.
-- Si `VITE_USE_MOCK=true` **ou** si l’API ne répond pas, le simulateur prend le relais (puce « Simulateur » en haut, étiquettes DÉMO) ; l’API est réessayée toutes les 30 s.
-- Courbes **Recharts** : FC + SpO₂ et rayonnement (débit de dose + cumul) sur l’écran *Montre* de l’astronaute et dans le dossier de chaque astronaute côté médecin de bord, avec les alertes du modèle (dérive).
-- Contrat JSON pour le développeur backend : [`docs/API-CONTRACT.md`](docs/API-CONTRACT.md). Backend prévu (FastAPI, Isolation Forest / autoencodeur LSTM, capteurs ESP-32) : [`backend/README.md`](backend/README.md).
+- `frontend/src/api/`: typed client (`fetch`, base `VITE_API_URL`), types `Astronaut`, `TelemetrySample`, `Alert` (level `vert` / `orange` / `rouge`, `driftScore`), a **mock** adapter, and **React Query** hooks: `useTelemetry` (every 2 s), `useAlerts` (15 s), `useAstronauts` (30 s), `useDataSource`, `useHeartForecast`.
+- If `VITE_USE_MOCK=true` **or** the API does not answer, the simulator takes over (“Simulator” chip, DEMO tags) and the API is retried every 30 s.
+- **Recharts** curves: heart rate + SpO₂, and radiation (dose rate + cumulative), on the astronaut watch screen and in each crew file on the crew-surgeon side. The live heart-rate chart continues the trace with XGBoost, LSTM, and Prophet.
+- JSON contract: [`docs/API-CONTRACT.md`](docs/API-CONTRACT.md). Ship server: [`backend/README.md`](backend/README.md).
 
-![Dossier médecin de bord, temps réel](docs/screens/projet-medecin-dossier-temps-reel.png)
+![Crew surgeon file, live](docs/screens/projet-medecin-dossier-temps-reel.png)
 
-## 5. Organisation du projet
+## 5. Repository layout
 
 ```
 PULSAR-PROJECT/
-├─ README.md                 ← ce fichier
-├─ AGENTS.md                 ← consignes pour les agents IA (Cursor)
+├─ README.md                 ← this file
+├─ AGENTS.md                 ← instructions for AI agents (Cursor)
 ├─ .cursor/
-│  ├─ mcp.json               ← serveur MCP Figma
+│  ├─ mcp.json               ← Figma MCP server
 │  └─ rules/                 ← design-system.mdc · figma.mdc · project.mdc
-├─ backend/
-│  └─ README.md              ← API Python FastAPI prévue + sorties attendues des modèles (aucun code)
+├─ backend/                  ← FastAPI ship server (forecasts, telemetry, sync)
 ├─ docs/
-│  ├─ API-CONTRACT.md        ← contrat JSON front ↔ backend
-│  ├─ DESIGN.md              ← chaque écran : nœud Figma, prototype, route, capture
+│  ├─ API-CONTRACT.md        ← JSON contract between front end and backend
+│  ├─ DESIGN.md              ← each screen: Figma node, prototype, route, capture
 │  ├─ ROLES-ET-IDENTIFIANTS.md
-│  ├─ CDC-PULSAR-v2.pdf      ← cahier des charges
-│  └─ screens/               ← captures de référence (héros, écrans, connexion)
+│  ├─ CDC-PULSAR-v2.pdf      ← requirements
+│  └─ screens/               ← reference captures (hero, screens, sign-in)
 └─ frontend/
-   ├─ public/                ← polices, logos, photo NASA, modèle 3D (body3d/body.glb + LICENSE.md)
+   ├─ public/                ← fonts, logos, NASA photo, 3D model (body3d/body.glb + LICENSE.md)
    ├─ .env.example           ← VITE_API_URL, VITE_USE_MOCK, VITE_AUTH_API_URL
-   ├─ tests/                 ← Playwright : smoke.spec.ts, features.spec.ts, sound.spec.ts
+   ├─ tests/                 ← Playwright: smoke.spec.ts, features.spec.ts, sound.spec.ts
    └─ src/
-      ├─ app/                ← routeur, coque commune des rôles, pages de dev
-      ├─ api/                ← client API typé, mock, hooks React Query
+      ├─ app/                ← router, shared role shell, dev pages
+      ├─ api/                ← typed API client, mock, React Query hooks
       ├─ features/
-      │  ├─ landing/         ← page d’accueil publique (/)
-      │  ├─ auth/            ← connexion (/connexion), session, gardes de route, service d’auth
+      │  ├─ landing/         ← public home page (/)
+      │  ├─ auth/            ← sign-in (/connexion), session, route guards, auth service
       │  ├─ astronaute/      ← A01–A12
-      │  ├─ medecin-bord/    ← M01–M11 (échographie guidée)
+      │  ├─ medecin-bord/    ← M01–M11 (guided ultrasound)
       │  ├─ nasa/            ← N01–N06
-      │  ├─ montre/          ← écrans montre carrée 198×242 et ronde 454×454
-      │  ├─ predictions/     ← prévisions, anomalies, solutions proposées, inspecteur
-      │  ├─ gamification/    ← séries, badges, missions, objectif d’équipage (CDC § 5.9)
-      │  └─ sound/           ← sons et alarmes (Web Audio, IEC 60601-1-8)
+      │  ├─ montre/          ← square watch 198×242 and round watch 454×454
+      │  ├─ predictions/     ← forecasts, anomalies, proposed actions, inspector
+      │  ├─ gamification/    ← streaks, badges, missions, crew goal (CDC § 5.9)
+      │  └─ sound/           ← sounds and alarms (Web Audio, IEC 60601-1-8)
       ├─ components/
-      │  ├─ ui/              ← composants partagés (Icon lucide, Card, Lamp, Demo…)
-      │  ├─ charts/          ← courbes Recharts temps réel (FC, SpO₂, rayonnement)
-      │  ├─ telemetry/       ← conducteur de temps + tableau LAD (inspirés d’Open MCT)
-      │  └─ body3d/          ← silhouette santé 3D (three.js, MakeHuman CC0)
+      │  ├─ ui/              ← shared components (lucide Icon, Card, Lamp, Demo…)
+      │  ├─ charts/          ← live Recharts curves (HR, SpO₂, radiation)
+      │  ├─ telemetry/       ← time conductor + LAD table
+      │  └─ body3d/          ← 3D health silhouette (three.js, MakeHuman CC0)
       ├─ design/             ← tokens.css · tokens.ts · figma-map.ts
-      ├─ data/               ← types + données de démo (équipage, zones, utilisateurs)
-      └─ styles/             ← styles des écrans
+      ├─ data/               ← types + demo data (crew, zones, users)
+      └─ styles/             ← screen styles
 ```
 
-Pile technique : React 19 · Vite 8 · TypeScript strict · Tailwind CSS 4 (branché sur les tokens) · TanStack React Query · Recharts · lucide-react · Motion · three.js / react-three-fiber · react-router · Playwright.
+Stack: React 19 · Vite 8 · TypeScript strict · Tailwind CSS 4 (wired to the tokens) · TanStack React Query · Recharts · lucide-react · Motion · three.js / react-three-fiber · react-router · Playwright. Ship server: FastAPI.
 
 ## 6. Git
 
-Le dossier n’est pas encore un dépôt Git. Pour le créer :
+Remote: https://github.com/kevinleboss499-code/PULSAR.git
 
-```powershell
-cd D:\PULSAR-PROJECT
-git init
-git add .
-git commit -m "PULSAR AHM v6 — front-end initial"
-```
+Active development is on `kevin/pulsar`. `michel/pulsar` keeps the earlier front-end documents commit.
 
-`.gitignore` exclut déjà `node_modules`, `dist`, les rapports de tests et les fichiers `.env`.
+`.gitignore` already excludes `node_modules`, `dist`, test reports, `.env`, and Python bytecode (`__pycache__`, `*.pyc`).
 
-## Crédits
-- Polices Hubot Sans, Mona Sans, Monaspace (GitHub, SIL OFL 1.1) · icônes lucide (ISC) · graphiques Recharts (MIT).
-- Silhouette 3D : maillage « base.obj » MakeHuman, CC0 1.0 (`frontend/public/body3d/LICENSE.md`).
-- Photos : NASA (domaine public).
-- Inspiration de design : NASA Open MCT (Apache-2.0, © 2014-2024 United States Government / NASA) — principes seulement, aucun code copié.
-- Sons : synthétisés dans le navigateur (Web Audio), aucun fichier audio.
-- Toutes les valeurs médicales affichées sont **fictives (DÉMO)**.
+## Credits
+- Fonts: Space Grotesk and IBM Plex (SIL OFL 1.1) · lucide icons (ISC) · Recharts (MIT).
+- 3D silhouette: MakeHuman “base.obj” mesh, CC0 1.0 (`frontend/public/body3d/LICENSE.md`).
+- Photos: NASA (public domain).
+- Design inspiration: NASA Open MCT (Apache-2.0, © 2014-2024 United States Government / NASA) — principles only, no copied code.
+- Sounds: synthesized in the browser (Web Audio), no audio files.
+- Every medical value on screen is **fictional (DEMO)**.

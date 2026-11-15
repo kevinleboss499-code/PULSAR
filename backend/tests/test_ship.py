@@ -29,7 +29,7 @@ class ShipServerTest(unittest.TestCase):
     def test_health_says_models_are_simulated(self):
         res = self.client.get("/health")
         self.assertEqual(res.status_code, 200)
-        self.assertEqual(res.json()["models"], ["simulated-rules"])
+        self.assertEqual(res.json()["models"], ["xgboost", "lstm", "prophet"])
 
     def test_astronauts_contract(self):
         row = self.client.get("/astronauts").json()[0]
@@ -56,8 +56,15 @@ class ShipServerTest(unittest.TestCase):
         body = self.client.get("/predictions/LK", params={"horizon": "24h"}).json()
         metrics = {f["metric"] for f in body["forecasts"]}
         self.assertEqual(len(metrics), 7)
-        self.assertEqual(body["model"], "simulated-rules v0")
-        self.assertTrue(body["forecasts"][0]["summary"].startswith("SIMULÉ"))
+        self.assertEqual(body["model"], "xgboost + lstm + prophet")
+        heart = body["forecasts"][0]
+        self.assertEqual(heart["metric"], "heart_rate")
+        future = [p for p in heart["points"] if "xgboost" in p and "observed" not in p]
+        self.assertGreaterEqual(len(future), 7)
+        for key in ("xgboost", "lstm", "prophet", "predicted", "lower", "upper"):
+            self.assertGreaterEqual(future[0][key], 40)
+            self.assertLessEqual(future[0][key], 160)
+        self.assertIn("LSTM", heart["summary"])
 
     def test_recommendations_list(self):
         rows = self.client.get("/recommendations/LK").json()

@@ -132,7 +132,7 @@ test("gamification : missions, série, objectif d’équipage ; désactivation p
   await login(page, "AST-002", "130742");
   await expect(page.getByTestId("goals-strip")).toBeVisible();
   await page.locator('.r-rail a[href="/astronaute/objectifs"]').click();
-  await expect(page.locator(".badges li")).toHaveCount(10);
+  await expect(page.locator(".badges li")).toHaveCount(11);
   await expect(page.getByText("Sept orbites")).toBeVisible();
   await expect(page.locator(".grade-now")).toContainText("Argent");
   await expect(page.getByText("jamais de vos valeurs de santé")).toBeVisible();

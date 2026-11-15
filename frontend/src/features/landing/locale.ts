@@ -90,7 +90,7 @@ const fr: LandingCopy = {
     ],
     steps: [
       { step: "01", title: "Montre", text: "Mesures automatiques 24 h/24 : FC, SpO₂, sommeil, dose. Alerte au poignet." },
-      { step: "02", title: "Tablette astronaute", text: "Vos données, kits Bluetooth, scan fatigue, silhouette santé, conseils simples." },
+      { step: "02", title: "Tablette astronaute", text: "Vos données, kits, scan fatigue, silhouette santé, conseils simples." },
       { step: "03", title: "Médecin de bord", text: "Voyants de l’équipage, solutions à valider, échographie guidée si besoin." },
       { step: "04", title: "NASA Houston", text: "Rapports à chaque fenêtre de liaison ; recommandations renvoyées à bord." },
     ],
@@ -173,7 +173,7 @@ const en: LandingCopy = {
     ],
     steps: [
       { step: "01", title: "Watch", text: "Automatic 24/7 measures: HR, SpO₂, sleep, dose. Alert on the wrist." },
-      { step: "02", title: "Crew tablet", text: "Your data, Bluetooth kits, fatigue scan, health silhouette, plain advice." },
+      { step: "02", title: "Crew tablet", text: "Your data, kits, fatigue scan, health silhouette, plain advice." },
       { step: "03", title: "Crew surgeon", text: "Crew lamps, actions to validate, guided ultrasound if needed." },
       { step: "04", title: "NASA Houston", text: "Reports each contact window; recommendations sent back aboard." },
     ],

@@ -21,7 +21,6 @@ export type AppMessages = {
     back: string;
     h1: string;
     lead: string;
-    bleBefore: string;
     loggedOut: string;
     idLabel: string;
     idHelp: (role: string) => string;
@@ -71,7 +70,6 @@ const fr: AppMessages = {
     back: "Découvrir PULSAR",
     h1: "Votre santé,\nsuivie en mission.",
     lead: "Identifiant et code personnels : vous arrivez sur le tableau de bord de votre rôle.",
-    bleBefore: "Veuillez vous connecter par Bluetooth avant de pouvoir continuer.",
     loggedOut: "Vous êtes déconnecté.",
     idLabel: "Identifiant personnel",
     idHelp: (r) => `Espace : ${r}`,
@@ -146,7 +144,6 @@ const en: AppMessages = {
     back: "Discover PULSAR",
     h1: "Your health,\ntracked on mission.",
     lead: "Personal ID and code: you land on the dashboard for your role.",
-    bleBefore: "Connect by Bluetooth before you can continue.",
     loggedOut: "You are signed out.",
     idLabel: "Personal ID",
     idHelp: (r) => `Space: ${r}`,

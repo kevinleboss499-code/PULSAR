@@ -5,8 +5,9 @@ import { Icon, Demo, Lamp, PageHead as Head, WorkflowBadge } from "@/components/
 import { notifyOk } from "@/components/ui/noticeStore";
 import { pushBoard } from "@/features/board/localLog";
 import { BodyFigure, ZoneLegend, ZONES3D, statesFor, type ZoneState } from "@/components/body3d";
-import { REGIONS } from "@/data/demo/regions";
+import { useLang, useRegions } from "@/i18n";
 import { useMe } from "@/features/auth/useMe";
+import { applyExerciseStates, exerciseFocus, exercisePart, startExercise, stopExercise, useExerciseSession } from "@/features/gamification/exercise";
 import type { Go } from "@/app/types";
 
 const SYMPTOM_PRESETS = ["Douleur", "Gêne", "Vertige", "Nausée", "Essoufflement", "Autre"];
@@ -14,11 +15,14 @@ const SYMPTOM_PRESETS = ["Douleur", "Gêne", "Vertige", "Nausée", "Essoufflemen
 function hudText(state: ZoneState, need: string) {
   if (state === "high") return `Alerte · ${need}`;
   if (state === "medium") return `Attention · ${need}`;
+  if (state === "active") return `Sollicité · ${need}`;
   if (state === "none") return "Pas de mesure directe";
   return "Nominal";
 }
 
 export function AstroBody({ go }: { go: Go }) {
+  const { tr } = useLang();
+  const REGIONS = useRegions();
   const ME = useMe();
   const reduce = useReducedMotion();
   const [told, setTold] = useState(false);
@@ -26,9 +30,13 @@ export function AstroBody({ go }: { go: Go }) {
   const [symptom, setSymptom] = useState(SYMPTOM_PRESETS[0]);
   const [note, setNote] = useState("");
   const [saved, setSaved] = useState<string[]>([]);
-  const states = statesFor(ME.light);
-  const reg = REGIONS.find((r) => r.id === sel);
-  const st: ZoneState = sel ? (states[sel] ?? "none") : "none";
+  const session = useExerciseSession();
+  const live = exerciseFocus(session);
+  const livePart = exercisePart(session);
+  const states = applyExerciseStates(statesFor(ME.light), session);
+  const shown = sel || live;
+  const reg = REGIONS.find((r) => r.id === shown);
+  const st: ZoneState = shown ? (states[shown] ?? "none") : "none";
   const brief = reg ? hudText(st, reg.need) : "";
   const fixing = st === "medium" || st === "high";
   const pick = (id: string) => {
@@ -52,7 +60,7 @@ export function AstroBody({ go }: { go: Go }) {
   };
   return (
     <>
-      <Head title="Carte du corps" sub="Touchez une zone. La vue se rapproche, la flèche indique le besoin, le tableau donne la position pour corriger." />
+      <Head title={tr("Carte du corps", "Body map")} sub={tr("Touchez une zone. La vue se rapproche, la flèche indique le besoin, le tableau donne la position pour corriger.", "Tap a zone. The view moves in, the arrow names the need, and the table gives the position to correct.")} />
       <aside className="resp-block" aria-label="Responsabilité">
         <div className="resp-block-top">
           <h3>Responsabilité</h3>
@@ -66,8 +74,23 @@ export function AstroBody({ go }: { go: Go }) {
       </aside>
       <div className="sil-board">
         <div className="sil-stage r-card">
-          <BodyFigure states={states} sel={sel || undefined} onPick={pick} zoom={!!sel} need={sel ? brief : undefined} />
-          <ZoneLegend />
+          {livePart
+            ? <p className="r-note">Séance en cours · {livePart.label} sollicitée (vert). La carte suit cette partie.</p>
+            : <p className="r-note">Lancez <button type="button" className="linkish" onClick={startExercise}>Exercice</button> pour voir les zones s’allumer en direct, ou touchez une zone.</p>}
+          <BodyFigure
+            states={states}
+            sel={shown || undefined}
+            onPick={pick}
+            zoom={!!shown}
+            need={livePart && !sel ? `Sollicité · ${livePart.label}` : shown ? brief : undefined}
+          />
+          <div className="btn-row sil-ex-actions">
+            <button type="button" className="btn btn-primary sm" onClick={() => (session.running ? stopExercise() : startExercise())}>
+              <Icon name={session.running ? "stop" : "fitness_center"} size={16} /> {session.running ? "Terminer l’exercice" : "Exercice"}
+            </button>
+            <button type="button" className="btn btn-ghost sm" onClick={() => go("/astronaute/objectifs")}>Objectifs</button>
+          </div>
+          <ZoneLegend exercise={session.running} />
         </div>
         <aside className="sil-fix r-card">
           {!reg ? (
@@ -77,7 +100,7 @@ export function AstroBody({ go }: { go: Go }) {
               <p>Rien n’est ouvert. Choisissez une zone : le corps se rapproche, une flèche nomme le besoin.</p>
             </>
           ) : (
-            <motion.div key={sel} initial={reduce ? false : { opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}>
+            <motion.div key={shown} initial={reduce ? false : { opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}>
               <div className="sil-fix-top">
                 <div>
                   <p className="eyebrow">{fixing ? "Correction" : st === "none" ? "À signaler" : "Maintien"}</p>

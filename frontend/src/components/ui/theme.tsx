@@ -2,6 +2,7 @@
    Affichage : bascule « modes » (Espace / Clinique) dans la barre d’outils. */
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { Icon } from "./Icon";
+import { useLang } from "@/i18n";
 
 export type Theme = "light" | "dark";
 const KEY = "pulsar-theme";
@@ -43,15 +44,18 @@ export const useTheme = () => useContext(Ctx);
 /** Bascule visuelle : icônes seules (sombre / clair). */
 export function ThemeToggle() {
   const { theme, setTheme } = useTheme();
+  const { tr } = useLang();
+  const dark = tr("Mode sombre", "Dark mode");
+  const light = tr("Mode clair", "Light mode");
   return (
-    <div className="theme-modes" role="group" aria-label="Mode d’affichage">
+    <div className="theme-modes" role="group" aria-label={tr("Mode d’affichage", "Display mode")}>
       <button
         type="button"
         className="theme-modes__btn"
         aria-pressed={theme === "dark"}
-        aria-label="Mode sombre"
+        aria-label={dark}
         onClick={() => setTheme("dark")}
-        title="Mode sombre"
+        title={dark}
       >
         <Icon name="dark_mode" size={16} />
       </button>
@@ -59,9 +63,9 @@ export function ThemeToggle() {
         type="button"
         className="theme-modes__btn"
         aria-pressed={theme === "light"}
-        aria-label="Mode clair"
+        aria-label={light}
         onClick={() => setTheme("light")}
-        title="Mode clair"
+        title={light}
       >
         <Icon name="light_mode" size={16} />
       </button>

@@ -5,6 +5,7 @@ import { Icon } from "@/components/ui";
 import { useSound, type Alarm } from "./SoundProvider";
 import { CATEGORY_LABEL, LOCKED, SILENT, SNOOZE_MS, setCategory, type SoundCategory } from "./settings";
 import { SOUND_LABEL, type SoundId } from "./engine";
+import { useLang } from "@/i18n";
 
 const LVL = { rouge: { cls: "warning", icon: "error", word: "Alerte" }, orange: { cls: "caution", icon: "warning", word: "Attention" }, info: { cls: "info", icon: "info", word: "Info" } } as const;
 
@@ -16,6 +17,7 @@ function Countdown({ until }: { until: number }) {
 }
 
 function AlarmRow({ a }: { a: Alarm }) {
+  const { tr } = useLang();
   const { acknowledge, snooze, markSeen } = useSound();
   const l = LVL[a.level];
   const paused = a.snoozedUntil != null && a.snoozedUntil > Date.now();
@@ -27,11 +29,11 @@ function AlarmRow({ a }: { a: Alarm }) {
       <span className="alarm-txt">
         <b>{a.title}</b>
         {a.detail && <small className="mono">{a.detail}</small>}
-        {paused && <small className="alarm-snd" aria-live="polite"><Icon name="volume_off" size={12} /> Pause <Countdown until={a.snoozedUntil!} /></small>}
+        {paused && <small className="alarm-snd" aria-live="polite"><Icon name="volume_off" size={12} /> {tr("Pause", "Pause")} <Countdown until={a.snoozedUntil!} /></small>}
       </span>
       <span className="btn-row">
-        {a.level !== "info" && !paused && canSnooze && <button type="button" className="btn btn-ghost sm" onClick={() => snooze(a.id)} aria-label={`Pause ${SNOOZE_MS / 60000} min`}><Icon name="snooze" size={16} /><span className="hide-sm">Pause</span></button>}
-        <button type="button" className="btn btn-primary sm" onClick={() => acknowledge(a.id)}><Icon name="check" size={16} /> Acquitter</button>
+        {a.level !== "info" && !paused && canSnooze && <button type="button" className="btn btn-ghost sm" onClick={() => snooze(a.id)} aria-label={tr(`Pause ${SNOOZE_MS / 60000} min`, `Pause ${SNOOZE_MS / 60000} min`)}><Icon name="snooze" size={16} /><span className="hide-sm">{tr("Pause", "Pause")}</span></button>}
+        <button type="button" className="btn btn-primary sm" onClick={() => acknowledge(a.id)}><Icon name="check" size={16} /> {tr("Acquitter", "Acknowledge")}</button>
       </span>
     </motion.li>
   );
@@ -39,6 +41,7 @@ function AlarmRow({ a }: { a: Alarm }) {
 
 /** Bandeau compact (1 alerte prioritaire + compteur) — style patient monitor / MCC. */
 export function AlarmBanner() {
+  const { tr } = useLang();
   const { alarms, unlocked } = useSound();
   const [cfg, setCfg] = useState(false);
   const [openAll, setOpenAll] = useState(false);
@@ -47,25 +50,25 @@ export function AlarmBanner() {
   const shown = openAll ? ranked : ranked.slice(0, 1);
   const more = ranked.length - shown.length;
   return (
-    <section className="alarm-banner" aria-label="Alarmes et son">
+    <section className="alarm-banner" aria-label={tr("Alarmes et son", "Alarms and sound")}>
       {!!shown.length && <ul><AnimatePresence initial={false}>{shown.map((a) => <AlarmRow key={a.id} a={a} />)}</AnimatePresence></ul>}
       {more > 0 && (
         <button type="button" className="btn btn-ghost sm" onClick={() => setOpenAll(true)}>
-          + {more} autre{more > 1 ? "s" : ""} alarme{more > 1 ? "s" : ""}
+          {tr(`+ ${more} autre${more > 1 ? "s" : ""} alarme${more > 1 ? "s" : ""}`, `+ ${more} more alarm${more > 1 ? "s" : ""}`)}
         </button>
       )}
       {openAll && ranked.length > 1 && (
-        <button type="button" className="btn btn-ghost sm" onClick={() => setOpenAll(false)}>Réduire</button>
+        <button type="button" className="btn btn-ghost sm" onClick={() => setOpenAll(false)}>{tr("Réduire", "Collapse")}</button>
       )}
-      {!unlocked && !!alarms.length && <p className="alarm-unlock"><Icon name="volume_off" size={14} /> Touchez l’écran pour activer le son. <button type="button" className="btn btn-ghost sm" data-testid="sound-settings-open" onClick={() => setCfg(true)}>Réglages</button></p>}
+      {!unlocked && !!alarms.length && <p className="alarm-unlock"><Icon name="volume_off" size={14} /> {tr("Touchez l’écran pour activer le son.", "Tap the screen to enable sound.")} <button type="button" className="btn btn-ghost sm" data-testid="sound-settings-open" onClick={() => setCfg(true)}>{tr("Réglages", "Settings")}</button></p>}
       {(unlocked || cfg) && (
         <div className="alarm-cfg">
           <button type="button" className="btn btn-ghost sm" data-testid="sound-settings-open" aria-expanded={cfg} onClick={() => setCfg((v) => !v)}>
-            {cfg ? "Fermer les réglages du son" : "Réglages du son"}
+            {cfg ? tr("Fermer les réglages du son", "Close sound settings") : tr("Réglages du son", "Sound settings")}
           </button>
           <AnimatePresence>
             {cfg && (
-              <motion.div className="sound-inline" role="dialog" aria-label="Réglages du son" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}>
+              <motion.div className="sound-inline" role="dialog" aria-label={tr("Réglages du son", "Sound settings")} initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}>
                 <SoundSettingsPanel />
               </motion.div>
             )}
@@ -77,41 +80,56 @@ export function AlarmBanner() {
 }
 
 /** Panneau de réglages du son (persistant) — pages Réglages ou bandeau. */
+const CATEGORY_EN: Record<SoundCategory, string> = {
+  alarmHigh: "Red / extreme alert (only active sound)",
+  alarmMedium: "Orange alert (silent)",
+  alarmLow: "Notification · information (silent)",
+  ack: "Acknowledgement (silent)",
+  report: "Report received / sent (silent)",
+  escalation: "Escalation (silent)",
+  sensor: "Fatigue scan · beeps (silent)",
+  badge: "Exercise finished (silent)",
+  login: "Sign-in (off)",
+  watchTick: "Watch navigation (off)",
+  landing: "Interface hover (off)",
+};
+
 export function SoundSettingsPanel({ demo = true }: { demo?: boolean }) {
+  const { tr, lang } = useLang();
   const { settings: s, update, play, raise } = useSound();
   const vid = useId();
   const cats = (Object.keys(CATEGORY_LABEL) as SoundCategory[]).filter((c) => !SILENT.includes(c));
   return (
     <div className="sound-panel" data-testid="sound-panel">
       <div className="setting">
-        <div><b>Sourdine générale</b><p className="r-note">N’affecte pas l’alarme rouge / extrême (un seul bip à l’apparition, puis silence). Pas de son hors connexion. Orange et le reste : muets.</p></div>
-        <button type="button" role="switch" aria-checked={s.muted} aria-label="Sourdine" className="switch" data-testid="sound-mute" onClick={() => update({ ...s, muted: !s.muted })}><i /></button>
+        <div><b>{tr("Sourdine générale", "Master mute")}</b><p className="r-note">{tr("N’affecte pas l’alarme rouge / extrême (un seul bip à l’apparition, puis silence). Pas de son hors connexion. Orange et le reste : muets.", "Does not affect the red / extreme alarm (one beep when it appears, then silence). No sound outside sign-in. Orange and the rest stay mute.")}</p></div>
+        <button type="button" role="switch" aria-checked={s.muted} aria-label={tr("Sourdine", "Mute")} className="switch" data-testid="sound-mute" onClick={() => update({ ...s, muted: !s.muted })}><i /></button>
       </div>
       <div className="setting">
-        <label htmlFor={vid}><b>Volume</b></label>
+        <label htmlFor={vid}><b>{tr("Volume", "Volume")}</b></label>
         <input id={vid} type="range" min={0} max={100} step={5} value={Math.round(s.volume * 100)} style={{ ["--pct" as string]: `${Math.round(s.volume * 100)}%` }} onChange={(e) => update({ ...s, volume: Number(e.target.value) / 100 })} aria-valuetext={`${Math.round(s.volume * 100)} %`} data-testid="sound-volume" />
         <span className="mono">{Math.round(s.volume * 100)} %</span>
       </div>
       <fieldset className="sound-cats">
-        <legend className="eyebrow">Son d’alerte</legend>
-        <p className="r-note">Seul le rouge / extrême sonne. Orange, notifications, fatigue modérée et navigation restent muets.</p>
+        <legend className="eyebrow">{tr("Son d’alerte", "Alert sound")}</legend>
+        <p className="r-note">{tr("Seul le rouge / extrême sonne. Orange, notifications, fatigue modérée et navigation restent muets.", "Only red / extreme sounds. Orange, notifications, moderate fatigue and navigation stay mute.")}</p>
         {cats.map((c) => {
           const locked = LOCKED.includes(c);
           return (
             <label key={c} className={locked ? "locked" : ""}>
               <input type="checkbox" checked={s.categories[c]} disabled={locked || SILENT.includes(c)} onChange={(e) => update(setCategory(s, c, e.target.checked))} data-cat={c} />
-              <span>{CATEGORY_LABEL[c]}{locked && <small> · toujours active (acquitter ou pause 2 min après vu)</small>}</span>
+              <span>{lang === "en" ? CATEGORY_EN[c] : CATEGORY_LABEL[c]}{locked && <small> · {tr("toujours active (acquitter ou pause 2 min après vu)", "always on (acknowledge, or pause 2 min after seen)")}</small>}</span>
             </label>
           );
         })}
       </fieldset>
       {demo && (
         <details className="sound-tests">
-          <summary>Écouter l’alarme rouge</summary>
+          <summary>{tr("Écouter l’alarme rouge", "Hear the red alarm")}</summary>
           <div className="btn-row">
             <button type="button" className="btn btn-ghost sm" onClick={() => play("alarmHigh")}>{SOUND_LABEL.alarmHigh}</button>
             <button type="button" className="btn btn-ghost sm" onClick={() => play("fatiguePim")}>{SOUND_LABEL.fatiguePim}</button>
-            <button className="btn btn-secondary sm" data-testid="sound-test-red" onClick={() => raise({ id: `TEST-${Date.now()}`, level: "rouge", title: "Test d’alarme rouge", detail: "Simulation (DÉMO) — acquittez pour arrêter" })}><Icon name="error" size={16} /> Simuler une alarme rouge</button>
+            <button className="btn btn-secondary sm" data-testid="sound-test-red" onClick={() => raise({ id: `TEST-${Date.now()}`, level: "rouge", title: tr("Test d’alarme rouge", "Red alarm test"), detail: tr("Simulation (DÉMO) — acquittez pour arrêter", "Simulation (DEMO) — acknowledge to stop") })}><Icon name="error" size={16} /> {tr("Simuler une alarme rouge", "Simulate a red alarm")}</button>
           </div>
         </details>
       )}
@@ -121,6 +139,7 @@ export function SoundSettingsPanel({ demo = true }: { demo?: boolean }) {
 
 /** Accès aux réglages son depuis la barre d’outils (état muet visible). */
 export function SoundMenu() {
+  const { tr } = useLang();
   const { settings } = useSound();
   const [open, setOpen] = useState(false);
   useEffect(() => {
@@ -150,8 +169,8 @@ export function SoundMenu() {
         onClick={() => setOpen((v) => !v)}
       >
         <Icon name={muted ? "volume_off" : "volume_up"} size={16} />
-        <span>Son</span>
-        {muted && <small className="tool-btn__meta">Sourdine</small>}
+        <span>{tr("Son", "Sound")}</span>
+        {muted && <small className="tool-btn__meta">{tr("Sourdine", "Muted")}</small>}
       </button>
       <AnimatePresence>
         {open && (

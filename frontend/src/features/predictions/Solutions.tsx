@@ -9,6 +9,7 @@ import { Icon, WorkflowBadge, workflowFromRecommendationStatus, type IconName } 
 import { useAuth } from "@/features/auth/AuthProvider";
 import { useSound } from "@/features/sound";
 import type { Role } from "@/data/types";
+import { readLang, useLang } from "@/i18n";
 
 export const CATEGORY: Record<RecommendationCategory, { label: string; icon: IconName }> = {
   hydratation: { label: "Hydratation", icon: "water_drop" },
@@ -25,7 +26,12 @@ const PRIO_RANK: Record<Priority, number> = { haute: 0, moyenne: 1, basse: 2 };
 
 export function statusLabel(r: Recommendation): string {
   const byCmo = r.updatedBy?.startsWith("CMO");
-  const m: Record<RecommendationStatus, string> = {
+  const en = readLang() === "en";
+  const m: Record<RecommendationStatus, string> = en ? {
+    proposee: "New", appliquee: "In progress", faite: "Resolved",
+    escaladee: byCmo ? "Escalated · flight surgeon" : "Escalated · crew surgeon",
+    validee: "In progress · validated", remplacee: "Resolved · replaced",
+  } : {
     proposee: "Nouveau", appliquee: "Pris en charge", faite: "Résolu",
     escaladee: byCmo ? "Escaladé · flight surgeon" : "Escaladé · médecin de bord",
     validee: "Pris en charge · validée", remplacee: "Résolu · remplacée",
@@ -34,26 +40,29 @@ export function statusLabel(r: Recommendation): string {
 }
 
 export function Disclaimer({ simple }: { simple?: boolean }) {
+  const { tr } = useLang();
   return (
     <p className="disclaimer" role="note">
       <Icon name="info" size={16} />
       {simple
-        ? <span>Prévisions SIMULÉES : aucun modèle Isolation Forest ni LSTM ne tourne. En cas de doute ou de symptôme, prévenez le médecin de bord. Ce n’est pas un diagnostic.</span>
-        : <span>Prévisions, Isolation Forest et autoencodeur LSTM : SIMULÉS tant qu’aucun modèle réel ne tourne. Aide à la décision, pas un diagnostic. À valider par le médecin de bord ou un flight surgeon.</span>}
+        ? <span>{tr("Pouls prévu par XGBoost, LSTM et Prophet, sur une série de démonstration. Ce n’est pas un diagnostic. En cas de symptôme, prévenez le médecin de bord.", "Pulse forecast by XGBoost, LSTM and Prophet, on a demo series. This is not a diagnosis. If you have a symptom, tell the crew surgeon.")}</span>
+        : <span>{tr("Fréquence cardiaque : XGBoost, LSTM et Prophet. Les autres indicateurs restent un scénario de démonstration. Aide à la décision, pas un diagnostic.", "Heart rate: XGBoost, LSTM and Prophet. The other metrics stay a demo scenario. Decision support, not a diagnosis.")}</span>}
     </p>
   );
 }
 
 export function Solutions({ astronautId, role, anomalies = [] }: { astronautId: string; role: Role; anomalies?: Anomaly[] }) {
+  const { tr } = useLang();
   const { data, isLoading, isError } = useRecommendations(astronautId);
-  if (isLoading) return <p className="chart-empty">Chargement des solutions…</p>;
-  if (isError) return <p className="chart-empty">Solutions indisponibles.</p>;
-  if (!data?.length) return <p className="r-note"><Icon name="check_circle" size={16} /> {role === "astronaute" ? "Rien à faire de particulier. Continuez votre routine." : "Aucune solution proposée pour cet astronaute."}</p>;
+  if (isLoading) return <p className="chart-empty">{tr("Chargement des solutions…", "Loading solutions…")}</p>;
+  if (isError) return <p className="chart-empty">{tr("Solutions indisponibles.", "Solutions unavailable.")}</p>;
+  if (!data?.length) return <p className="r-note"><Icon name="check_circle" size={16} /> {role === "astronaute" ? tr("Rien à faire de particulier. Continuez votre routine.", "Nothing particular to do. Continue your routine.") : tr("Aucune solution proposée pour cet astronaute.", "No solution proposed for this astronaut.")}</p>;
   const list = [...data].sort((a, b) => PRIO_RANK[a.priority] - PRIO_RANK[b.priority]);
   return <ul className="sol-list">{list.map((r) => <SolutionItem key={r.id} r={r} role={role} anomaly={anomalies.find((a) => a.id === r.anomalyId)} />)}</ul>;
 }
 
 function SolutionItem({ r, role, anomaly }: { r: Recommendation; role: Role; anomaly?: Anomaly }) {
+  const { tr, lang } = useLang();
   const { user } = useAuth();
   const mut = useUpdateRecommendation(r.astronautId);
   const { play } = useSound();
@@ -65,43 +74,49 @@ function SolutionItem({ r, role, anomaly }: { r: Recommendation; role: Role; ano
   const closed = r.status === "faite" || r.status === "escaladee";
   const decided = r.status === "validee" || r.status === "remplacee";
   const c = CATEGORY[r.category];
+  const cat = lang === "en" ? {
+    hydratation: "Hydration", repos_sommeil: "Rest · sleep", ajustement_exercice: "Adapted exercise",
+    abri_radiations: "Radiation shelter", remesure: "Repeat the measurement", echographie: "Ultrasound",
+    contact_medecin_bord: "Crew surgeon", contact_flight_surgeon: "Flight surgeon (NASA)",
+  }[r.category] : c.label;
+  const prio = lang === "en" ? { haute: "High priority", moyenne: "Medium priority", basse: "Low priority" }[r.priority] : PRIO[r.priority];
   return (
     <motion.li layout className={`sol sol-${r.priority} st-${r.status}`} data-status={r.status} data-id={r.id}>
       <span className="sol-ico"><Icon name={c.icon} size={20} /></span>
       <div className="sol-body">
-        <p className="sol-meta"><span className={`prio prio-${r.priority}`}>{r.priority === "haute" && <Icon name="arrow_upward" size={12} />}{PRIO[r.priority]}</span><span>{c.label}</span>{!simple && <span className="mono">{r.source === "prevision" ? "issue d’une prévision" : anomaly ? `anomalie ${anomaly.id}` : ""}</span>}</p>
+        <p className="sol-meta"><span className={`prio prio-${r.priority}`}>{r.priority === "haute" && <Icon name="arrow_upward" size={12} />}{prio}</span><span>{cat}</span>{!simple && <span className="mono">{r.source === "prevision" ? tr("issue d’une prévision", "from a forecast") : anomaly ? `${tr("anomalie", "anomaly")} ${anomaly.id}` : ""}</span>}</p>
         {r.status === "remplacee" && r.replacementTitle
           ? <><p className="sol-title">{r.replacementTitle}</p><p className="sol-old"><s>{r.title}</s></p></>
           : <p className="sol-title">{simple ? r.plainText : r.title}</p>}
-        {!simple && <p className="sol-why"><b>Pourquoi :</b> {r.rationale}</p>}
+        {!simple && <p className="sol-why"><b>{tr("Pourquoi :", "Why:")}</b> {r.rationale}</p>}
         {r.note && <p className="sol-note"><Icon name="ink_pen" size={14} /> {r.note}</p>}
         <p className="sol-status" aria-live="polite">
-          <WorkflowBadge status={workflowFromRecommendationStatus(r.status)} assignee={r.assignee ?? r.updatedBy ?? (r.status === "proposee" ? (simple ? "Vous" : "CMO-001") : null)} />
+          <WorkflowBadge status={workflowFromRecommendationStatus(r.status)} assignee={r.assignee ?? r.updatedBy ?? (r.status === "proposee" ? (simple ? tr("Vous", "You") : "CMO-001") : null)} />
           <span className="visually-hidden">{statusLabel(r)}</span>
         </p>
         <AnimatePresence initial={false}>
           {edit && (
             <motion.form className="sol-edit" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}
               onSubmit={(e) => { e.preventDefault(); if (!title.trim()) return; set("remplacee", { replacementTitle: title.trim(), note: note.trim() || undefined }); setEdit(false); }}>
-              <label className="field"><span>Nouvelle consigne</span><input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ex. Repos complet jusqu’à 18:00" required /></label>
-              <label className="field"><span>Note du médecin de bord (facultatif)</span><input value={note} onChange={(e) => setNote(e.target.value)} /></label>
-              <div className="btn-row"><button className="btn btn-primary sm" type="submit">Enregistrer</button><button className="btn btn-ghost sm" type="button" onClick={() => setEdit(false)}>Annuler</button></div>
+              <label className="field"><span>{tr("Nouvelle consigne", "New instruction")}</span><input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={tr("Ex. Repos complet jusqu’à 18:00", "E.g. Full rest until 18:00")} required /></label>
+              <label className="field"><span>{tr("Note du médecin de bord (facultatif)", "Crew surgeon note (optional)")}</span><input value={note} onChange={(e) => setNote(e.target.value)} /></label>
+              <div className="btn-row"><button className="btn btn-primary sm" type="submit">{tr("Enregistrer", "Save")}</button><button className="btn btn-ghost sm" type="button" onClick={() => setEdit(false)}>{tr("Annuler", "Cancel")}</button></div>
             </motion.form>
           )}
         </AnimatePresence>
         {role === "astronaute" && !closed && (
           <div className="btn-row sol-actions">
-            {r.status !== "appliquee" && <button className="btn btn-secondary sm" disabled={mut.isPending} onClick={() => set("appliquee")}><Icon name="play_arrow" size={16} /> Appliquer</button>}
-            <button className="btn btn-secondary sm" disabled={mut.isPending} onClick={() => set("faite")}><Icon name="check" size={16} /> Marquer fait</button>
-            <button className="btn btn-ghost sm" disabled={mut.isPending} onClick={() => set("escaladee")}><Icon name="stethoscope" size={16} /> Escalader au médecin de bord</button>
+            {r.status !== "appliquee" && <button className="btn btn-secondary sm" disabled={mut.isPending} onClick={() => set("appliquee")}><Icon name="play_arrow" size={16} /> {tr("Appliquer", "Apply")}</button>}
+            <button className="btn btn-secondary sm" disabled={mut.isPending} onClick={() => set("faite")}><Icon name="check" size={16} /> {tr("Marquer fait", "Mark done")}</button>
+            <button className="btn btn-ghost sm" disabled={mut.isPending} onClick={() => set("escaladee")}><Icon name="stethoscope" size={16} /> {tr("Escalader au médecin de bord", "Escalate to the crew surgeon")}</button>
           </div>
         )}
         {role === "medecin-bord" && !edit && (
           <div className="btn-row sol-actions">
-            {!decided && <button className="btn btn-secondary sm" disabled={mut.isPending} onClick={() => set("validee", { note: note.trim() || undefined })}><Icon name="thumb_up" size={16} /> Valider</button>}
-            <button className="btn btn-secondary sm" onClick={() => { setTitle(r.replacementTitle ?? ""); setEdit(true); }}><Icon name="edit" size={16} /> Remplacer…</button>
-            {r.status !== "faite" && <button className="btn btn-ghost sm" disabled={mut.isPending} onClick={() => set("faite")}><Icon name="check" size={16} /> Marquer fait</button>}
-            {r.status !== "escaladee" && <button className="btn btn-ghost sm" disabled={mut.isPending} onClick={() => set("escaladee")}><Icon name="satellite_alt" size={16} /> Escalader au flight surgeon</button>}
+            {!decided && <button className="btn btn-secondary sm" disabled={mut.isPending} onClick={() => set("validee", { note: note.trim() || undefined })}><Icon name="thumb_up" size={16} /> {tr("Valider", "Validate")}</button>}
+            <button className="btn btn-secondary sm" onClick={() => { setTitle(r.replacementTitle ?? ""); setEdit(true); }}><Icon name="edit" size={16} /> {tr("Remplacer…", "Replace…")}</button>
+            {r.status !== "faite" && <button className="btn btn-ghost sm" disabled={mut.isPending} onClick={() => set("faite")}><Icon name="check" size={16} /> {tr("Marquer fait", "Mark done")}</button>}
+            {r.status !== "escaladee" && <button className="btn btn-ghost sm" disabled={mut.isPending} onClick={() => set("escaladee")}><Icon name="satellite_alt" size={16} /> {tr("Escalader au flight surgeon", "Escalate to the flight surgeon")}</button>}
           </div>
         )}
       </div>

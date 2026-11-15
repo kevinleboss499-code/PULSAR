@@ -165,7 +165,8 @@ const LISTEN: { char: string; apply: (view: DataView, into: BleReading) => void 
   { char: "plx_continuous_measurement", apply: (v, into) => { const s = parseSpo2(v); if (s) { into.spo2 = s.spo2; if (s.pulse != null) into.pulse = s.pulse; } } },
 ];
 
-export async function listen(device: BleDevice, onReading: (reading: BleReading) => void): Promise<void> {
+/** Ouvre la liaison GATT. Renvoie vrai si une mesure standard (pouls, SpO₂, tension…) est lue. */
+export async function listen(device: BleDevice, onReading: (reading: BleReading) => void): Promise<boolean> {
   const server = await device.gatt?.connect();
   if (!server) throw new Error("Connexion GATT impossible");
   const name = device.name || "Appareil BLE";
@@ -190,7 +191,7 @@ export async function listen(device: BleDevice, onReading: (reading: BleReading)
       } catch { /* ce service n’a pas cette caractéristique */ }
     }));
   }));
-  if (!found) throw new Error("Aucune mesure standard sur cet appareil");
+  return found > 0;
 }
 
 export function disconnect(id: string) {

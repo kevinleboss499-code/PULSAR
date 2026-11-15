@@ -1,8 +1,8 @@
 /* Journal médical local (cet appareil), en attendant l’API.
    L’astronaute y écrit ; le médecin de bord le lit dans le même navigateur. */
 import { useSyncExternalStore } from "react";
-import { EVENTS } from "@/data/demo/crew";
 import type { Light } from "@/data/types";
+import { localizeEvents, useLang } from "@/i18n";
 
 export type BoardLine = { t: string; who: string; text: string; light: Light };
 const KEY = "pulsar.board.log";
@@ -34,7 +34,8 @@ function subscribe(fn: () => void) {
 
 /** Événements de cet appareil, puis la journée de démo. */
 export function useJournal(): BoardLine[] {
+  const { lang } = useLang();
   const snap = useSyncExternalStore(subscribe, () => localStorage.getItem(KEY) ?? "", () => "");
   void snap;
-  return [...read(), ...EVENTS];
+  return [...read(), ...localizeEvents(lang)];
 }

@@ -75,6 +75,29 @@ export type ForecastPoint = {
   predicted?: number;    // valeur prévue (présente à partir du dernier point observé)
   lower?: number;        // borne basse de l’intervalle de confiance (80 %)
   upper?: number;        // borne haute
+  xgboost?: number;      // FC : prévision XGBoost
+  lstm?: number;         // FC : prévision LSTM
+  prophet?: number;      // FC : prévision Prophet
+};
+
+/** GET /heart-rate/live — FC observée et prévisions courtes des trois modèles. */
+export type HeartLivePoint = {
+  timestamp: string;
+  heartRate?: number;
+  predicted?: number;
+  lower?: number;
+  upper?: number;
+  xgboost?: number;
+  lstm?: number;
+  prophet?: number;
+};
+export type HeartLiveForecast = {
+  astronautId: string;
+  generatedAt: string;
+  stepSec: number;
+  models: Array<"xgboost" | "lstm" | "prophet">;
+  note: string;
+  points: HeartLivePoint[];
 };
 
 export type MetricForecast = {

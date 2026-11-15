@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { useAuth } from "@/features/auth/AuthProvider";
 import { DEFAULT_SETTINGS, effectiveVolume, isSnoozed, loadSettings, saveSettings, shouldPlay, snoozeUntil, type SoundSettings } from "./settings";
 import { SOUND_CATEGORY, isUnlocked, playPattern, unlock, type SoundId } from "./engine";
+import { pingHardwareBuzzer } from "./hardwareBuzzer";
 
 export type AlarmLevel = "rouge" | "orange" | "info";
 export type Alarm = {
@@ -64,6 +65,7 @@ export function SoundProvider({ children }: { children: ReactNode }) {
     const s = sRef.current, cat = SOUND_CATEGORY[id];
     if (!shouldPlay(s, cat)) return;
     playPattern(id, effectiveVolume(s, cat));
+    pingHardwareBuzzer(id);
   }, []);
 
   const update = useCallback((s: SoundSettings) => { saveSettings(localStorage, s); setSettings(loadSettings(localStorage)); }, []);
@@ -100,6 +102,7 @@ export function SoundProvider({ children }: { children: ReactNode }) {
         const id = a.sound ?? LEVEL_SOUND[a.level], cat = SOUND_CATEGORY[id];
         if (!shouldPlay(s, cat, a, now)) continue;
         playPattern(id, effectiveVolume(s, cat));
+        pingHardwareBuzzer(id);
         rememberSounded(a.id);
         setAlarms((l) => l.map((x) => (x.id === a.id ? { ...x, sounded: true } : x)));
       }

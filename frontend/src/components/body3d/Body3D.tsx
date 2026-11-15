@@ -6,11 +6,12 @@ import { Outlines, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 
 import { ZONES3D, VIEW_ANGLE, VIEW_LABEL, type ZoneState, type View } from "./zones";
+import { useLang, VIEW_NAME_EN, ZONE_NAME_EN } from "@/i18n";
 import { moveHud, ZoneHud, type HudHandles } from "./ZoneHud";
 import { body3d as T } from "@/design/tokens";
 const AXIS_Y = new THREE.Vector3(0, 1, 0);
 const BASE = new THREE.Color(T.base);
-const TINT: Record<ZoneState, THREE.Color | null> = { nominal: new THREE.Color(T.nominal), medium: new THREE.Color(T.medium), high: new THREE.Color(T.high), none: null };
+const TINT: Record<ZoneState, THREE.Color | null> = { nominal: new THREE.Color(T.nominal), medium: new THREE.Color(T.medium), high: new THREE.Color(T.high), active: new THREE.Color(T.active), none: null };
 
 function Body({ states, sel, angle, zoom, btns, hud, onProject, theme }: { states: Record<string, ZoneState>; sel?: string; angle: number; zoom?: boolean; btns: MutableRefObject<Record<string, HTMLButtonElement | null>>; hud: MutableRefObject<HudHandles>; onProject?: (p: Record<string, [number, number, boolean]>) => void; theme: "dark" | "light" }) {
   const { scene } = useGLTF("/body3d/body.glb");
@@ -106,6 +107,7 @@ function Cam() {
   return null;
 }
 export function Body3D({ states, sel, onPick, view = "front", onView, hotspots = true, onProject, theme = "dark", className, zoom, need }: { states: Record<string, ZoneState>; sel?: string; onPick?: (id: string) => void; view?: View; onView?: (v: View) => void; hotspots?: boolean; onProject?: (p: Record<string, [number, number, boolean]>) => void; theme?: "dark" | "light"; className?: string; zoom?: boolean; need?: string }) {
+  const { lang, tr } = useLang();
   const [angle, setAngle] = useState(VIEW_ANGLE[view]);
   useEffect(() => setAngle(VIEW_ANGLE[view]), [view]);
   const drag = useRef<number | null>(null);
@@ -125,18 +127,21 @@ export function Body3D({ states, sel, onPick, view = "front", onView, hotspots =
           <directionalLight position={[-3, 1.5, -2]} intensity={0.5} />
           <Suspense fallback={null}><Body states={states} sel={sel} angle={angle} zoom={zoom} btns={btns} hud={hud} onProject={onProject} theme={theme} /></Suspense>
         </Canvas>
-        {hotspots && ZONES3D.map((z) => (
-          <button key={z.id} ref={(el) => { btns.current[z.id] = el; }} style={{ opacity: 0 }} className={`hot3d abs st-${states[z.id] ?? "none"} ${z.id === sel ? "on" : ""}`} aria-pressed={z.id === sel} aria-label={z.label}
-            onPointerDown={(e) => e.stopPropagation()} onClick={() => onPick?.(z.id)}><i /><span>{z.label}</span></button>
-        ))}
+        {hotspots && ZONES3D.map((z) => {
+          const name = lang === "en" ? ZONE_NAME_EN[z.id] ?? z.label : z.label;
+          return (
+          <button key={z.id} ref={(el) => { btns.current[z.id] = el; }} style={{ opacity: 0 }} className={`hot3d abs st-${states[z.id] ?? "none"} ${z.id === sel ? "on" : ""}`} aria-pressed={z.id === sel} aria-label={name}
+            onPointerDown={(e) => e.stopPropagation()} onClick={() => onPick?.(z.id)}><i /><span>{name}</span></button>
+          );
+        })}
       </div>
       {focused && <ZoneHud key={sel} x={50} y={42} label={need} tone={states[sel!] ?? "none"} live handles={hud.current} />}
       {onView && (
-        <div className="view-seg" role="radiogroup" aria-label="Vue du corps">
-          {(Object.keys(VIEW_LABEL) as View[]).map((v) => <button key={v} role="radio" aria-checked={view === v} onClick={() => onView(v)}>{VIEW_LABEL[v]}</button>)}
+        <div className="view-seg" role="radiogroup" aria-label={tr("Vue du corps", "Body view")}>
+          {(Object.keys(VIEW_LABEL) as View[]).map((v) => <button key={v} role="radio" aria-checked={view === v} onClick={() => onView(v)}>{lang === "en" ? VIEW_NAME_EN[v] : VIEW_LABEL[v]}</button>)}
         </div>
       )}
-      {hotspots && <p className="body3d-hint">{focused ? "La zone reste au centre" : "Glissez pour tourner"}</p>}
+      {hotspots && <p className="body3d-hint">{focused ? tr("La zone reste au centre", "The zone stays centered") : tr("Glissez pour tourner", "Drag to rotate")}</p>}
     </div>
   );
 }

@@ -3,7 +3,11 @@
    Le vrai backend (Isolation Forest / autoencodeur LSTM + modèle de prévision) devra renvoyer les mêmes formes
    (docs/API-CONTRACT.md). */
 import type { AlertLevel, Anomaly, ForecastPoint, Horizon, MetricForecast, Prediction, PredictionMetric, Recommendation, RecommendationUpdate } from "./types";
+import { applyHeartModels } from "./heartModels";
 import { THRESHOLDS as TH } from "@/data/thresholds";
+import { readLang } from "@/i18n";
+
+const tx = (fr: string, en: string) => (readLang() === "en" ? en : fr);
 
 const HOUR = 3_600_000, DAY = 24 * HOUR;
 const noise = (seed: number) => { const x = Math.sin(seed * 12.9898) * 43758.5453; return x - Math.floor(x) - 0.5; };
@@ -22,6 +26,10 @@ const DEF: Record<PredictionMetric, Omit<Spec, "base" | "slopeH" | "slopeD">> = 
   glucose: { label: "Glycémie", unit: "mg/dL", dec: 0, amp: 6, sd: 3, every: 8, thr: { orange: TH.glucose_forecast.orange, rouge: TH.glucose_forecast.rouge, direction: "above" } },
   sleep: { label: "Sommeil", unit: "h", dec: 1, amp: 0, sd: 0.25, daily: true, thr: { orange: TH.sleep.orange, rouge: TH.sleep.rouge, direction: "below" } },
   radiation: { label: "Débit de dose", unit: "µSv/h", dec: 1, amp: 1.5, sd: 0.8, thr: { orange: TH.radiation.orange, rouge: TH.radiation.rouge, direction: "above" } },
+};
+const METRIC_EN: Record<PredictionMetric, string> = {
+  heart_rate: "Resting HR", spo2: "SpO₂", bp_systolic: "Systolic pressure", skin_temp: "Temperature",
+  glucose: "Glucose", sleep: "Sleep", radiation: "Dose rate",
 };
 // base, pente par heure (horizon 24 h), pente par jour (horizon 7 j) — scénarios de démo par astronaute
 type P = [number, number, number];
@@ -67,11 +75,17 @@ function forecast(id: string, metric: PredictionMetric, horizon: Horizon, now: n
   const first = futs[0].predicted!, last = futs[futs.length - 1].predicted!;
   const delta = last - first, tol = d.sd * 1.5;
   const trend = Math.abs(delta) < tol ? "stable" : delta > 0 ? "hausse" : "baisse";
+  const trendEn = trend === "hausse" ? "rising" : trend === "baisse" ? "falling" : "stable";
   const level = futs.reduce<AlertLevel>((a, p) => (SEV[levelOf(p.predicted!, d.thr)] > SEV[a] ? levelOf(p.predicted!, d.thr) : a), "vert");
-  const span = daily ? `${fut} prochains jours` : "24 prochaines heures";
-  const summary = `${d.label} : ${r1(first, d.dec)} ${d.unit} maintenant, prévision ${trend} sur les ${span} (${r1(last, d.dec)} ${d.unit}). `
-    + (tth != null ? `Seuil ${tl} (${d.thr[tl as "orange" | "rouge"]} ${d.unit}) probable dans environ ${fmtH(tth)}.` : "Aucun seuil franchi dans l’horizon.");
-  return { metric, label: d.label, unit: d.unit, resolution: daily ? "day" : "hour", points, thresholds: d.thr, level, trend, timeToThresholdHours: tth, thresholdLevel: tl, summary };
+  const label = tx(d.label, METRIC_EN[metric]);
+  const span = tx(daily ? `${fut} prochains jours` : "24 prochaines heures", daily ? `next ${fut} days` : "next 24 hours");
+  const summary = tx(
+    `${label} : ${r1(first, d.dec)} ${d.unit} maintenant, prévision ${trend} sur les ${daily ? `${fut} prochains jours` : "24 prochaines heures"} (${r1(last, d.dec)} ${d.unit}). `
+      + (tth != null ? `Seuil ${tl} (${d.thr[tl as "orange" | "rouge"]} ${d.unit}) probable dans environ ${fmtH(tth)}.` : "Aucun seuil franchi dans l’horizon."),
+    `${label}: ${r1(first, d.dec)} ${d.unit} now, forecast ${trendEn} over the ${span} (${r1(last, d.dec)} ${d.unit}). `
+      + (tth != null ? `${tl} threshold (${d.thr[tl as "orange" | "rouge"]} ${d.unit}) likely in about ${fmtH(tth)}.` : "No threshold crossed in the horizon."),
+  );
+  return { metric, label, unit: d.unit, resolution: daily ? "day" : "hour", points, thresholds: d.thr, level, trend, timeToThresholdHours: tth, thresholdLevel: tl, summary };
 }
 export const fmtH = (h: number) => (h < 48 ? `${Math.max(1, Math.round(h))} h` : `${Math.round(h / 24)} j`);
 
@@ -119,23 +133,70 @@ const STORE = "pulsar.mock.recommendations";
 type St = Pick<Recommendation, "status" | "updatedAt" | "updatedBy" | "note" | "replacementTitle">;
 const load = (): Record<string, St> => { try { return JSON.parse(localStorage.getItem(STORE) || "{}"); } catch { return {}; } };
 const INITIAL: Record<string, Partial<St>> = { "RC-LK-05": { status: "validee", updatedBy: "CMO-001", note: "Prévue à 14:00 à l’infirmerie." }, "RC-SR-01": { status: "faite", updatedBy: "AST-004" } };
+const NOTE_EN: Record<string, string> = { "RC-LK-05": "Scheduled at 14:00 in the sickbay." };
+
+const AN_EN: Record<string, Partial<Anomaly>> = {
+  "AN-LK-01": {
+    label: "Resting HR rising over 3 days",
+    contributors: [{ signal: "Resting HR", weight: 0.46 }, { signal: "Sleep duration", weight: 0.31 }, { signal: "HRV (RMSSD)", weight: 0.15 }, { signal: "Temperature", weight: 0.08 }],
+    explanation: "LSTM autoencoder reconstruction error at the 97th percentile of the personal baseline (D100–D123). Resting HR +20 bpm in 3 days, HRV down, sleep under 6 h two nights in a row.",
+    plainExplanation: "Your resting pulse has been rising for 3 days and your nights are shorter than usual.",
+  },
+  "AN-LK-02": {
+    label: "Sleep debt",
+    contributors: [{ signal: "Sleep duration", weight: 0.58 }, { signal: "Mood (questionnaire)", weight: 0.24 }, { signal: "Previous-day activity", weight: 0.18 }],
+    explanation: "Isolation Forest: isolated point (score 0.49) on sleep duration / mood; 4 nights in a row below the personal mean (7.1 h).",
+    plainExplanation: "You have slept less than usual for 4 nights.",
+  },
+  "AN-SR-01": {
+    label: "Transient low SpO₂ (D126)",
+    contributors: [{ signal: "SpO₂", weight: 0.7 }, { signal: "Sensor signal quality", weight: 0.3 }],
+    explanation: "Threshold rule: SpO₂ 91% for 4 min (threshold 92%), weak signal quality; remeasure at 98%. Forecast trend slightly down over 7 days: keep watching.",
+    plainExplanation: "One oxygen reading was low last night, likely because of the sensor. The remeasure was normal.",
+  },
+};
+const REC_EN: Record<string, Partial<Pick<Recommendation, "title" | "rationale" | "plainText">>> = {
+  "RC-LK-01": { title: "Move bedtime 45 min earlier tonight (protected slot)", rationale: "Sleep debt over 4 nights, correlated with the resting-HR rise (31% contribution).", plainText: "Go to bed 45 minutes earlier tonight. The sleep slot is protected: no reminder will disturb you." },
+  "RC-LK-02": { title: "Drink 500 mL of water by 12:00", rationale: "Relative dehydration in microgravity can raise resting HR; yesterday’s fluid balance was low.", plainText: "Drink a 500 mL water pouch before noon." },
+  "RC-LK-03": { title: "Replace the intense ARED session with 30 min of moderate cycling", rationale: "Limit cardiovascular load while resting HR stays more than 15 bpm above baseline.", plainText: "Today, do 30 minutes of easy cycling instead of the intense strength session." },
+  "RC-LK-04": { title: "Remeasure resting HR tomorrow at 07:30, lying down for 5 min", rationale: "Orange threshold (100 bpm) expected in the next hours: confirm the trend under standard conditions.", plainText: "Tomorrow at 07:30, lie still for 5 minutes, then start the pulse measurement." },
+  "RC-LK-05": { title: "Guided cardiac ultrasound (4-chamber view)", rationale: "Rule out a structural cause; to be done by the crew surgeon with step-by-step guidance.", plainText: "The crew surgeon will offer a heart ultrasound, guided by the tablet." },
+  "RC-LK-06": { title: "Attach the flight surgeon’s opinion to the next report (13:50 UTC)", rationale: "Three-day trend; Houston’s opinion helps if the forecast is confirmed.", plainText: "Your data will be attached to the next report sent to the NASA physicians." },
+  "RC-SR-01": { title: "Remeasure SpO₂ tonight, sensor repositioned (warmed finger)", rationale: "Event likely an artifact (weak signal quality); the forecast trend still needs confirmation.", plainText: "Tonight, warm your finger, then repeat the oxygen measurement with the sensor seated well." },
+  "RC-SR-02": { title: "Tell the crew surgeon if short of breath or SpO₂ < 94%", rationale: "Safety criterion: a symptom or a new confirmed low value.", plainText: "If you are short of breath or oxygen drops below 94%, tell the crew surgeon." },
+  "RC-AM-01": { title: "Prepare a retreat to the radiation shelter during the D128 EVA", rationale: "Dose rate forecast above 40 µSv/h during the spacewalk (SAA pass + moderate solar activity).", plainText: "During tomorrow’s spacewalk, if the dosimeter goes orange, go to the radiation shelter." },
+};
 
 export function mockPredictions(id: string, horizon: Horizon = "24h"): Prediction {
   const now = Date.now(), hourT = Math.floor(now / HOUR) * HOUR;
-  const forecasts = (Object.keys(DEF) as PredictionMetric[]).map((m) => forecast(id, m, horizon, now));
-  const anomalies = (ANOMALIES[id] ?? []).map((a, i) => ({ ...a, detectedAt: new Date(hourT - (i * 5 + 1) * HOUR).toISOString() }));
+  const forecasts = (Object.keys(DEF) as PredictionMetric[]).map((m) => {
+    const f = forecast(id, m, horizon, now);
+    if (m !== "heart_rate") return f;
+    const points = applyHeartModels(f.points, f.resolution === "day" ? 7 : 24);
+    const summary = tx(
+      `${f.label} : médiane XGBoost, LSTM et Prophet. ${f.summary} Aide à la décision, pas un diagnostic.`,
+      `${f.label}: XGBoost, LSTM and Prophet median. ${f.summary} Decision support, not a diagnosis.`,
+    );
+    return { ...f, points, summary };
+  });
+  const en = readLang() === "en";
+  const anomalies = (ANOMALIES[id] ?? []).map((a, i) => ({ ...a, ...(en ? AN_EN[a.id] : {}), detectedAt: new Date(hourT - (i * 5 + 1) * HOUR).toISOString() }));
   const soon = forecasts.filter((f) => f.timeToThresholdHours != null).sort((a, b) => a.timeToThresholdHours! - b.timeToThresholdHours!)[0];
   const risk = [...forecasts.map((f) => f.level), ...anomalies.map((a) => a.level)].reduce<AlertLevel>((a, l) => (SEV[l] > SEV[a] ? l : a), "vert");
   return {
-    astronautId: id, generatedAt: new Date(hourT).toISOString(), horizon, model: "lstm_forecaster v0.3 (DÉMO)", riskLevel: risk, driftScore: DRIFT[id] ?? 0.1,
+    astronautId: id, generatedAt: new Date(hourT).toISOString(), horizon, model: "xgboost + lstm + prophet", riskLevel: risk, driftScore: DRIFT[id] ?? 0.1,
     nextThreshold: soon ? { metric: soon.metric, label: soon.label, level: soon.thresholdLevel!, hours: soon.timeToThresholdHours! } : null,
     forecasts, anomalies,
   };
 }
 export function mockRecommendations(id: string): Recommendation[] {
   const st = load();
+  const en = readLang() === "en";
   return (RECS[id] ?? []).map((r) => {
-    const merged = { status: "proposee" as const, updatedAt: null, updatedBy: null, note: null, replacementTitle: null, assignee: "CMO-001", ...r, ...INITIAL[r.id], ...(st[r.id] as Partial<St> | undefined) };
+    const base = en ? { ...r, ...REC_EN[r.id] } : r;
+    const seed = INITIAL[r.id];
+    const seeded = seed?.note && en ? { ...seed, note: NOTE_EN[r.id] ?? seed.note } : seed;
+    const merged = { status: "proposee" as const, updatedAt: null, updatedBy: null, note: null, replacementTitle: null, assignee: "CMO-001", ...base, ...seeded, ...(st[r.id] as Partial<St> | undefined) };
     const assignee = merged.updatedBy ?? (merged.status === "proposee" ? (id === "LK" ? "AST-001" : "CMO-001") : merged.assignee);
     return { ...merged, assignee };
   });

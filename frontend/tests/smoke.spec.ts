@@ -46,14 +46,12 @@ test("astronaute : ne voit que ses données + accès montre", async ({ page }) =
   await expect(page.locator(".r-user")).toContainText("Alex");
   await expect(page.getByText("Lina Kovacs")).toHaveCount(0);
   await page.locator('.r-rail a[href="/astronaute/montre"]').click();
-  await expect(page.getByRole("heading", { name: "Rien de connecté" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Empreinte" })).toBeVisible();
+  await expect(page.getByText("Rien de connecté")).toHaveCount(0);
+  await expect(page.getByTestId("watch-connect")).toHaveCount(0);
+  await expect(page.getByText("PULSAR Montre")).toHaveCount(0);
   await expect(page.locator(".watch-prev")).toHaveCount(0);
-  await page.getByTestId("watch-connect").click();
-  await expect(page.getByRole("button", { name: "Connecter", exact: true }).first()).toBeVisible();
-  await page.getByRole("button", { name: "Connecter", exact: true }).first().click();
-  await expect(page.locator(".watch-prev")).toBeVisible();
-  await expect(page.locator(".live-chart .recharts-line").first()).toBeVisible();
-  await page.getByRole("link", { name: /Voir les écrans de la montre/ }).click();
+  await page.goto("/astronaute/montre/ecrans");
   await expect(page).toHaveURL(/\/astronaute\/montre\/ecrans$/);
   await expect(page.getByRole("heading", { name: "Écrans de la montre" })).toBeVisible();
 });
@@ -75,7 +73,7 @@ test("accueil : un seul écran de connexion, sans choix de profil ni comptes de 
   await expect(page.locator("#login-code")).toBeVisible();
   await expect(page.getByText(/Choix du profil|Comptes de démonstration/)).toHaveCount(0);
   for (const id of ["AST-001", "CMO-001", "NASA-FS-001"]) await expect(page.getByText(id, { exact: false })).toHaveCount(0);
-  await expect(page.locator("main button, form button")).toHaveCount(3); // Bluetooth + afficher/masquer le code + valider
+  await expect(page.locator("main button, form button")).toHaveCount(2); // afficher/masquer le code + valider
 });
 
 test("NASA : liste des rapports et réponse", async ({ page }) => {

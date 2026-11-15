@@ -1,6 +1,7 @@
 /* Frise de plan de soins / mesures — chronologie clinique sobre. */
 import { Icon, Lamp, type IconName } from "@/components/ui";
 import type { Light } from "@/data/types";
+import { useLang } from "@/i18n";
 
 export type CareStep = {
   id: string;
@@ -13,16 +14,18 @@ export type CareStep = {
 };
 
 export function CareTimeline({
-  title = "Plan de soins · J127",
+  title,
   steps,
 }: {
   title?: string;
   steps: CareStep[];
 }) {
+  const { tr } = useLang();
+  const heading = title ?? tr("Plan de soins · J127", "Care plan · D127");
   return (
     <section className="care-tl r-card" aria-labelledby="care-tl-h">
       <header className="a01-card-h">
-        <h2 id="care-tl-h"><Icon name="history" size={18} /> {title}</h2>
+        <h2 id="care-tl-h"><Icon name="history" size={18} /> {heading}</h2>
       </header>
       <ol className="care-tl-list">
         {steps.map((s) => (

@@ -47,6 +47,7 @@ export function badgesFor(id: string, streak: number): Badge[] {
     { id: "b-500", family: "jalon", label: "Relais profond", detail: "500 mesures faites depuis le début de la mission", icon: "satellite_alt", value: Math.min(h.measures, 500), goal: 500 },
     { id: "b-1000", family: "jalon", label: "Phare de mission", detail: "1\u202f000 mesures faites depuis le début de la mission", icon: "award", value: Math.min(h.measures, 1000), goal: 1000 },
     { id: "b-ex", family: "routine", label: "Garde sportive", detail: "Séances planifiées suivies 4 semaines de suite", icon: "fitness_center", value: Math.min(h.exerciseWeeks, 4), goal: 4 },
+    { id: "b-breath", family: "routine", label: "Protocole calme", detail: "Respiration guidée faite 10 fois (régularité, pas un score de stress)", icon: "spa", value: Math.min(h.onTime, 10), goal: 10 },
     { id: "b-night", family: "routine", label: "Veille de nuit", detail: "Montre portée 14 nuits (durée de port, pas la qualité du sommeil)", icon: "watch", value: Math.min(h.nights, 14), goal: 14 },
     { id: "b-time", family: "routine", label: "Fenêtre de liaison", detail: "Rappels de mesure traités dans le créneau, 20 fois", icon: "schedule", value: Math.min(h.onTime, 20), goal: 20 },
     { id: "b-echo", family: "routine", label: "Écho transmis", detail: "Première échographie suivie jusqu’à l’envoi", icon: "monitor_heart", value: h.echo ? 1 : 0, goal: 1 },
@@ -100,4 +101,21 @@ export function profileFor(id: string, measuresDoneCount: number) {
   const badges = badgesFor(id, streak);
   const earned = badges.filter((b) => b.value >= b.goal).length;
   return { streak, badges, grade: gradeFor(earned, badges.length) };
+}
+
+/**
+ * Indice de constance (0–100) — régularité uniquement (EF-42) :
+ * série, missions du jour, insignes obtenus. Jamais une valeur de santé.
+ */
+export function constancyScore(input: {
+  streak: number;
+  missionsDone: number;
+  missionsTotal: number;
+  badgesEarned: number;
+  badgesTotal: number;
+}) {
+  const streakPart = Math.min(40, Math.round((Math.min(input.streak, 30) / 30) * 40));
+  const missionPart = input.missionsTotal === 0 ? 0 : Math.round((input.missionsDone / input.missionsTotal) * 35);
+  const badgePart = input.badgesTotal === 0 ? 0 : Math.round((input.badgesEarned / input.badgesTotal) * 25);
+  return Math.min(100, streakPart + missionPart + badgePart);
 }

@@ -28,9 +28,10 @@ const BADGE_GLYPH: Record<string, GameIconName> = {
   "b-500": "relay",
   "b-1000": "gem",
   "b-ex": "medal",
+  "b-breath": "heart",
   "b-night": "watch",
   "b-time": "clock",
-  "b-echo": "heart",
+  "b-echo": "beacon",
 };
 
 export function badgeGlyph(id: string): GameIconName {

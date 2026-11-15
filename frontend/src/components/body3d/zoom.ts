@@ -1,18 +1,26 @@
 /* Zoom de zone partagé : même geste sur tous les tableaux de bord. */
 import { useState } from "react";
-import { REGIONS } from "@/data/demo/regions";
 import type { ZoneState } from "./zones";
+import { localizeRegions, readLang, useLang, type Lang } from "@/i18n";
 
-export function zoneBrief(states: Record<string, ZoneState>, id: string) {
-  const reg = REGIONS.find((r) => r.id === id);
+export function zoneBrief(states: Record<string, ZoneState>, id: string, lang: Lang = readLang()) {
+  const reg = localizeRegions(lang).find((r) => r.id === id);
+  const zone = reg?.need ?? (lang === "en" ? "zone" : "zone");
   const st = states[id] ?? "none";
-  if (st === "high") return `Alerte · ${reg?.need ?? "zone"}`;
-  if (st === "medium") return `Attention · ${reg?.need ?? "zone"}`;
+  if (lang === "en") {
+    if (st === "high") return `Alert · ${zone}`;
+    if (st === "medium") return `Caution · ${zone}`;
+    if (st === "none") return "No direct measurement";
+    return "Nominal";
+  }
+  if (st === "high") return `Alerte · ${zone}`;
+  if (st === "medium") return `Attention · ${zone}`;
   if (st === "none") return "Pas de mesure directe";
   return "Nominal";
 }
 
 export function useZoneZoom(states: Record<string, ZoneState>, initial = "", scope = "") {
+  const { lang } = useLang();
   const [sel, setSel] = useState(initial);
   const [seen, setSeen] = useState(scope);
   if (scope !== seen) {
@@ -24,6 +32,6 @@ export function useZoneZoom(states: Record<string, ZoneState>, initial = "", sco
     sel: sel || undefined,
     pick,
     zoom: !!sel,
-    need: sel ? zoneBrief(states, sel) : undefined,
+    need: sel ? zoneBrief(states, sel, lang) : undefined,
   };
 }

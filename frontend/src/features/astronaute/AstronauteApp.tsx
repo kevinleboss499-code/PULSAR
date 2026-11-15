@@ -14,7 +14,7 @@ export default function AstronauteApp() {
   const go = useNavigate();
   const ME = useMe();
   const { enabled } = useGamification(ME.id);
-  const { t } = useLang();
+  const { t, tr } = useLang();
   const a = t.nav.astro;
 
   const suivi: NavItem[] = [
@@ -58,7 +58,7 @@ export default function AstronauteApp() {
             <Route path="*" element={<NotFound home="/astronaute" />} />
           </Routes>
           <button type="button" className="arm-toggle" onClick={() => go("/astronaute/mode-bras")}>
-            <Icon name="pan_tool" size={20} /> Mode bras (EVA)
+            <Icon name="pan_tool" size={20} /> {tr("Mode bras (EVA)", "Arm mode (EVA)")}
           </button>
         </RoleLayout>
       } />

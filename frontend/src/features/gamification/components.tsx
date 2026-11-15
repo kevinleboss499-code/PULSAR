@@ -1,12 +1,17 @@
 /* Gamification coopérative (CDC § 5.9) : série de régularité, missions du jour, objectif d’équipage, badges.
    Sobre : pas de confettis, pas de glow ; animations Motion discrètes (respect de prefers-reduced-motion). */
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
-import { motion } from "motion/react";
-import { Card, Icon } from "@/components/ui";
-import { BADGE_FAMILIES, gradeHint } from "./data";
+import { motion, useReducedMotion } from "motion/react";
+import { Card, HudDial, Icon } from "@/components/ui";
+import { BodyFigure, statesFor } from "@/components/body3d";
+import { BADGE_FAMILIES } from "./data";
 import { badgeGlyph, GameIcon, type GameIconName } from "./glyphs";
 import type { useGamification } from "./store";
 import { useSound } from "@/features/sound";
+import { FAMILY_EN, gradeHintFor, useLang } from "@/i18n";
+import { useMe } from "@/features/auth/useMe";
+import { applyExerciseStates, BODY_PARTS, exerciseFocus, exercisePart, startExercise, stopExercise, useExerciseSession } from "./exercise";
 
 type G = ReturnType<typeof useGamification>;
 
@@ -65,17 +70,18 @@ export function StreakDays({ g }: { g: G }) {
 }
 
 export function StreakCard({ g, className }: { g: G; className?: string }) {
+  const { tr } = useLang();
   return (
-    <Card title="Série de régularité" glyph={<GameIcon name="flame" />} className={className}>
+    <Card title={tr("Série de régularité", "Regularity streak")} glyph={<GameIcon name="flame" />} className={className}>
       <div className="streak-hero">
         <p className="streak-big">
           <motion.b key={g.streak} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}>{g.streak}</motion.b>
-          {" "}jours de suite
+          {" "}{tr("jours de suite", "days in a row")}
         </p>
-        <p className="r-note">{g.measuresComplete ? "Toutes les mesures du jour sont faites : la série continue." : "Faites toutes les mesures du jour pour prolonger la série."}</p>
+        <p className="r-note">{g.measuresComplete ? tr("Toutes les mesures du jour sont faites : la série continue.", "All of today’s measures are done: the streak continues.") : tr("Faites toutes les mesures du jour pour prolonger la série.", "Complete today’s measures to extend the streak.")}</p>
       </div>
       <StreakWeek g={g} />
-      <p className="eyebrow streak-hist-label">14 derniers jours</p>
+      <p className="eyebrow streak-hist-label">{tr("14 derniers jours", "Last 14 days")}</p>
       <StreakDays g={g} />
     </Card>
   );
@@ -84,12 +90,12 @@ export function StreakCard({ g, className }: { g: G; className?: string }) {
 /** Tuiles bento de régularité — jamais de valeurs de santé (EF-42). */
 export function RegularityTiles({ g }: { g: G }) {
   const missionsDone = g.missions.filter((m) => m.done).length;
-  const badgesGot = g.badges.filter((b) => b.value >= b.goal).length;
+  const badgesGot = g.badgesEarned;
   const tiles = [
+    { id: "constancy", icon: <GameIcon name="gem" size={18} />, label: "Indice de constance", value: `${g.constancy}`, hint: "série · missions · insignes — pas un score clinique" },
     { id: "missions", icon: <GameIcon name="missions" size={18} />, label: "Missions du jour", value: `${missionsDone}/${g.missions.length}`, hint: "mesures + routines" },
     { id: "xp", icon: <GameIcon name="bolt" size={18} />, label: "XP régularité", value: `${g.xp}`, hint: "+25 / mission · +5 / jour de série" },
-    { id: "badges", icon: <GameIcon name="medal" size={18} />, label: "Badges obtenus", value: `${badgesGot}/${g.badges.length}`, hint: "jalons de constance" },
-    { id: "crew", icon: <GameIcon name="crew" size={18} />, label: "Objectif équipage", value: `${g.crew.pct} %`, hint: `${g.crew.done}/${g.crew.total} mesures` },
+    { id: "badges", icon: <GameIcon name="medal" size={18} />, label: "Insignes obtenus", value: `${badgesGot}/${g.badges.length}`, hint: "jalons de constance" },
   ] as const;
   return (
     <ul className="goals-metrics" aria-label="Indicateurs de régularité">
@@ -106,18 +112,19 @@ export function RegularityTiles({ g }: { g: G }) {
 }
 
 export function MissionsCard({ g, className }: { g: G; className?: string }) {
+  const { tr } = useLang();
   const n = g.missions.filter((m) => m.done).length;
   const pct = Math.round((n / g.missions.length) * 100);
   const { play } = useSound();
   return (
     <Card
-      title="Défis du jour"
+      title={tr("Défis du jour", "Today’s challenges")}
       glyph={<GameIcon name="missions" />}
       aside={<span className="chip mono" data-testid="missions-count">{n}/{g.missions.length}</span>}
       className={className}
     >
       <p className="goal-line challenges-progress">
-        <b className="mono">{pct} %</b> complété
+        <b className="mono">{pct} %</b> {tr("complété", "complete")}
       </p>
       <CrewGoalBar pct={pct} />
       <ul className="missions">
@@ -128,9 +135,9 @@ export function MissionsCard({ g, className }: { g: G; className?: string }) {
               <Icon name={m.icon} size={18} />
               <span className="mi-body">
                 <span className="mi-label">{m.label}</span>
-                <span className="mi-kind mono">{m.kind === "mesure" ? "mesure" : "routine"} · {m.when}</span>
+                <span className="mi-kind mono">{m.kind === "mesure" ? tr("mesure", "measure") : tr("routine", "routine")} · {m.when}</span>
               </span>
-              <span className="mi-xp mono">{m.done ? "fait" : `+${XP_PER_MISSION} XP`}</span>
+              <span className="mi-xp mono">{m.done ? tr("fait", "done") : `+${XP_PER_MISSION} XP`}</span>
             </button>
           </motion.li>
         ))}
@@ -158,9 +165,9 @@ function Medal({ name, goal, showCount }: { name: GameIconName; goal: number; ea
   return (
     <span className="bd-medal">
       <svg viewBox="0 0 80 108" aria-hidden="true">
-        <path className="bd-ribbon" d="M28 58 H52 V104 L40 90 L28 104 Z" />
-        <circle className="bd-disc" cx="40" cy="34" r="30" />
-        <circle className="bd-inner" cx="40" cy="34" r="23" />
+        <path className="bd-ribbon" pathLength={1} d="M28 58 H52 V104 L40 90 L28 104 Z" />
+        <circle className="bd-disc" pathLength={1} cx="40" cy="34" r="30" />
+        <circle className="bd-inner" pathLength={1} cx="40" cy="34" r="23" />
       </svg>
       <span className="bd-mark">
         {showCount ? <b className={goal >= 100 ? "mono bd-num bd-num--long" : "mono bd-num"}>{goal}</b> : <GameIcon name={name} size={26} />}
@@ -170,11 +177,12 @@ function Medal({ name, goal, showCount }: { name: GameIconName; goal: number; ea
 }
 
 export function BadgesCard({ g, className }: { g: G; className?: string }) {
+  const { tr, lang } = useLang();
   return (
-    <Card title="Insignes de mission" glyph={<GameIcon name="medal" />} className={className}>
+    <Card title={tr("Insignes & badges de l’équipage", "Crew badges")} glyph={<GameIcon name="medal" />} className={className}>
       <div className="grade-block">
-        <p className="grade-now">Niveau <b>{g.grade.current.label}</b></p>
-        <p className="r-note">{gradeHint(g.grade)}</p>
+        <p className="grade-now">{tr("Niveau", "Level")} <b>{g.grade.current.label}</b> · {tr("constance", "constancy")} <b className="mono">{g.constancy}</b></p>
+        <p className="r-note">{gradeHintFor(g.grade, lang)} {tr("Les insignes obtenus sont en couleur ; les autres restent atténués.", "Earned badges are in color; the others stay muted.")}</p>
         <ol className="grade-steps" aria-label="Niveaux de constance">
           {g.grade.levels.map((level) => (
             <li key={level.id} className={g.grade.earned >= level.min ? "got" : ""} aria-current={level.id === g.grade.current.id ? "step" : undefined}>
@@ -186,17 +194,17 @@ export function BadgesCard({ g, className }: { g: G; className?: string }) {
       <div className="badge-groups">
         {BADGE_FAMILIES.map((family) => (
           <section key={family.id} aria-label={family.label}>
-            <p className="eyebrow">{family.label}</p>
+            <p className="eyebrow">{lang === "en" ? FAMILY_EN[family.id] ?? family.label : family.label}</p>
             <ul className="badges">
               {g.badges.filter((b) => b.family === family.id).map((b) => {
                 const got = b.value >= b.goal;
                 const pct = b.goal === 0 ? 0 : b.value / b.goal;
                 return (
-                  <li key={b.id} className={got ? "got" : pct > 0 ? "is-on" : ""} data-earned={got}>
+                  <li key={b.id} className={got ? "got" : pct > 0 ? "is-on" : "is-locked"} data-earned={got} aria-disabled={!got}>
                     <Medal name={badgeGlyph(b.id)} goal={b.goal} earned={got} showCount={b.family === "serie"} />
                     <b>{b.label}</b>
                     <span className="bd-detail">{b.detail}</span>
-                    <span className="bd-prog">{got ? <><Icon name="check_circle" size={14} /> Obtenu</> : <span className="mono">{b.value}/{b.goal}</span>}</span>
+                    <span className="bd-prog">{got ? <><Icon name="check_circle" size={14} /> {tr("Obtenu", "Earned")}</> : <span className="mono">{b.value}/{b.goal}</span>}</span>
                   </li>
                 );
               })}
@@ -209,21 +217,199 @@ export function BadgesCard({ g, className }: { g: G; className?: string }) {
 }
 
 export function EthicsNote() {
+  const { tr } = useLang();
   return (
-    <p className="disclaimer" role="note"><Icon name="verified_user" size={16} /><span><b>Règles :</b> séries et badges ne dépendent que de la régularité (mesures faites, routines suivies), jamais de vos valeurs de santé. Aucune comparaison entre membres. Vous pouvez désactiver la gamification dans <Link to="/astronaute/reglages">Réglages</Link>.</span></p>
+    <p className="disclaimer" role="note"><Icon name="verified_user" size={16} /><span><b>{tr("Règles :", "Rules:")}</b> {tr("séries et badges ne dépendent que de la régularité (mesures faites, routines suivies), jamais de vos valeurs de santé. Aucune comparaison entre membres. Vous pouvez désactiver la gamification dans", "streaks and badges depend only on regularity (readings done, routines followed), never on your health values. No comparison between members. You can turn gamification off in")} <Link to="/astronaute/reglages">{tr("Réglages", "Settings")}</Link>.</span></p>
+  );
+}
+
+type TraceMode = "pulse" | "wave" | "crew";
+
+function useTick(ms = 90) {
+  const calm = useReducedMotion();
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    if (calm) return;
+    const id = window.setInterval(() => setTick((t) => (t + 1) % 10000), ms);
+    return () => window.clearInterval(id);
+  }, [calm, ms]);
+  return calm ? 0 : tick;
+}
+
+/** Compte 0 → cible à l’ouverture (0,9 s), puis suit les changements en 0,28 s. */
+function useCountUp(target: number, ms = 900) {
+  const calm = useReducedMotion();
+  const [n, setN] = useState(target);
+  const shown = useRef(target);
+  const opened = useRef(false);
+  useEffect(() => {
+    if (calm !== false) {
+      shown.current = target;
+      setN(target);
+      return;
+    }
+    const start = opened.current ? shown.current : 0;
+    const dur = opened.current ? Math.min(280, ms) : ms;
+    opened.current = true;
+    const t0 = performance.now();
+    let raf = 0;
+    const frame = (now: number) => {
+      const t = Math.min(1, (now - t0) / dur);
+      const e = 1 - (1 - t) ** 3;
+      const v = Math.round(start + (target - start) * e);
+      shown.current = v;
+      setN(v);
+      if (t < 1) raf = requestAnimationFrame(frame);
+      else shown.current = target;
+    };
+    raf = requestAnimationFrame(frame);
+    return () => cancelAnimationFrame(raf);
+  }, [target, calm, ms]);
+  return n;
+}
+
+/** Échantillon 0–1. Le gain (0–1) ne fait varier que l’amplitude de régularité. */
+function sample(i: number, mode: TraceMode, gain: number) {
+  const amp = 0.25 + Math.max(0, Math.min(1, gain)) * 0.7;
+  if (mode === "pulse") {
+    const phase = i % 18;
+    if (phase === 3) return 0.5 - 0.12 * amp;
+    if (phase === 4) return 0.5 + 0.42 * amp;
+    if (phase === 5) return 0.5 - 0.55 * amp;
+    if (phase === 6) return 0.5 + 0.18 * amp;
+    return 0.5 + Math.sin(i / 5) * 0.03;
+  }
+  if (mode === "wave") return 0.5 + Math.sin((i + amp * 8) / 4.5) * (0.16 + amp * 0.22);
+  return 0.5 + Math.sin(i / 9) * 0.16 * (0.4 + amp) + (amp - 0.5) * 0.1;
+}
+
+function traceSeries(tick: number, mode: TraceMode, gain: number) {
+  const n = 48;
+  const pts: { x: number; y: number }[] = [];
+  for (let i = 0; i < n; i++) {
+    const x = (i / (n - 1)) * 240;
+    const y = 8 + Math.max(0, Math.min(1, sample(i + tick, mode, gain))) * 28;
+    pts.push({ x, y });
+  }
+  return pts;
+}
+
+/** Courbe qui se trace une fois, point en tête, barres sous le trait. Ensuite elle défile. */
+function LiveTrace({ tick, mode, gain, label }: { tick: number; mode: TraceMode; gain: number; label: string }) {
+  const calm = useReducedMotion();
+  const pts = traceSeries(tick, mode, gain);
+  const last = pts[pts.length - 1];
+  const points = pts.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
+  return (
+    <div className="hud-trace">
+      {label ? <span className="hud-trace-lab mono">{label}</span> : null}
+      <div className={calm ? "hud-plot" : "hud-plot is-draw"}>
+        <svg viewBox="0 0 240 44" preserveAspectRatio="none" aria-hidden="true">
+          {pts.map((p, i) => i % 2 === 0 ? (
+            <rect key={i} className="hud-bar" x={p.x - 0.8} y={p.y} width={1.6} height={Math.max(0, 40 - p.y)} />
+          ) : null)}
+          <polyline points={points} />
+        </svg>
+        <span className="hud-tip" style={{ top: `${(last.y / 44) * 100}%` }} />
+      </div>
+    </div>
+  );
+}
+
+/** Écran de séance : bouton Exercice, corps 3D teinté en direct, traces de régularité. */
+export function MissionHud({ g }: { g: G }) {
+  const { tr } = useLang();
+  const tick = useTick();
+  const ME = useMe();
+  const { play } = useSound();
+  const session = useExerciseSession();
+  const running = session.running;
+  const step = session.step;
+
+  const covered = running ? Math.min(BODY_PARTS.length, step + 1) : 0;
+  const coveredNow = useCountUp(covered);
+  const constancyNow = useCountUp(g.constancy);
+  const current = running ? step % BODY_PARTS.length : -1;
+  const gain = covered / BODY_PARTS.length;
+  const clock = `${Math.floor((step * 3) / 60)}:${String((step * 3) % 60).padStart(2, "0")}`;
+  const part = exercisePart(session);
+  const focus = exerciseFocus(session);
+  const zones = applyExerciseStates(statesFor(ME.light), session);
+
+  const stop = () => {
+    stopExercise();
+    if (g.markDone("r-ex")) play("badge");
+  };
+
+  return (
+    <section className="mission-hud" aria-label="Séance d’exercice" data-testid="mission-hud">
+      <header className="mission-hud-head">
+        <span className="mono">Séance · corps en direct</span>
+        <span className="hud-live mono"><i /> {running ? "En direct" : "En attente"}</span>
+      </header>
+      <div className="mission-hud-grid mission-hud-grid--body">
+        <div className="mission-hud-traces">
+          <LiveTrace tick={tick} mode="pulse" gain={running ? 0.9 : 0.15} label="Rythme" />
+          <LiveTrace tick={tick} mode="wave" gain={running ? 0.55 + gain * 0.45 : 0.1} label="Effort" />
+          <LiveTrace tick={tick} mode="crew" gain={gain} label="Zones" />
+          <ul className="hud-status">
+            {BODY_PARTS.map((p, i) => (
+              <li key={p.id} className={i < covered ? "is-done" : ""}>
+                <span>{p.label}</span>
+                <span className="mono">{i === current ? "en cours" : i < covered ? "sollicitée" : "—"}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div className="mission-hud-body">
+          <p className="hud-readout">
+            <b className="mono">{coveredNow}</b>
+            <span className="mono">{part ? tr(`${part.label} · sollicitée`, `${part.label} · worked`) : tr(`Zones · sur ${BODY_PARTS.length}`, `Zones · of ${BODY_PARTS.length}`)}</span>
+          </p>
+          <div className="mission-hud-stage">
+            <BodyFigure
+              states={zones}
+              sel={focus || undefined}
+              zoom={!!focus}
+              need={part ? tr(`Sollicité · ${part.label}`, `Worked · ${part.label}`) : undefined}
+              views={false}
+            />
+          </div>
+        </div>
+        <div className="mission-hud-dial">
+          <HudDial label={tr("Constance", "Constancy")} value={constancyNow} pct={constancyNow / 100} delta={running ? clock : tr("régularité", "regularity")} />
+          <button type="button" className="btn btn-primary" data-testid="exercise-btn" onClick={running ? stop : startExercise}>
+            <Icon name={running ? "stop" : "fitness_center"} size={16} /> {running ? tr("Terminer", "Finish") : tr("Exercice", "Exercise")}
+          </button>
+          <p className="mono hud-dial-foot">{g.missions.some((m) => m.id === "r-ex" && m.done) ? tr("Routine du jour cochée", "Today’s routine checked") : tr("Compte pour la régularité", "Counts toward regularity")}</p>
+          <p className="r-note hud-note">{tr("Les zones vertes = parties sollicitées. Pas un diagnostic.", "Green zones = parts worked. Not a diagnosis.")}</p>
+          <p className="hud-links">
+            <Link to="/astronaute/silhouette">{tr("Silhouette", "Silhouette")}</Link>
+            <Link to="/astronaute/bien-etre">{tr("Séance 30 min", "30 min session")}</Link>
+          </p>
+        </div>
+      </div>
+      <ol className="hud-timeline" aria-hidden="true">
+        {BODY_PARTS.map((p, i) => <li key={p.id} className={i === current ? "today" : i < covered ? "ok" : "miss"} />)}
+      </ol>
+    </section>
   );
 }
 
 /** Bandeau compact pour l’accueil astronaute. */
 export function GoalsStrip({ g }: { g: G }) {
+  const { tr } = useLang();
+  const tick = useTick(110);
   const n = g.missions.filter((m) => m.done).length;
   return (
     <Link className="goals-strip" to="/astronaute/objectifs" data-testid="goals-strip">
+      <LiveTrace tick={tick} mode="pulse" gain={n / g.missions.length} label="" />
+      <span><GameIcon name="gem" size={16} /> {tr("Constance", "Constancy")} <b className="mono">{g.constancy}</b></span>
       <span><GameIcon name="bolt" size={16} /> <b className="mono">{g.xp} XP</b></span>
-      <span><GameIcon name="medal" size={16} /> Niveau <b>{g.grade.current.label}</b></span>
-      <span><GameIcon name="flame" size={16} /> Série <b className="mono">{g.streak} j</b></span>
-      <span><GameIcon name="missions" size={16} /> Missions <b className="mono">{n}/{g.missions.length}</b></span>
-      <span><GameIcon name="crew" size={16} /> Équipage <b className="mono">{g.crew.pct} %</b></span>
+      <span><GameIcon name="medal" size={16} /> {tr("Niveau", "Level")} <b>{g.grade.current.label}</b></span>
+      <span><GameIcon name="flame" size={16} /> {tr("Série", "Streak")} <b className="mono">{g.streak} {tr("j", "d")}</b></span>
+      <span><GameIcon name="missions" size={16} /> {tr("Missions", "Missions")} <b className="mono">{n}/{g.missions.length}</b></span>
+      <span><GameIcon name="crew" size={16} /> {tr("Équipage", "Crew")} <b className="mono">{g.crew.pct} %</b></span>
       <Icon name="chevron_right" size={16} />
     </Link>
   );
