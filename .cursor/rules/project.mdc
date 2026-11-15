@@ -1,0 +1,54 @@
+---
+description: Architecture du projet PULSAR (dossiers, rôles, authentification, commandes)
+alwaysApply: true
+---
+
+# Projet PULSAR AHM — architecture
+
+Application web React 19 + Vite 8 + TypeScript (strict) + Tailwind v4 (sur tokens) + TanStack React Query + Recharts + lucide-react + Motion + three.js (@react-three/fiber, drei) + react-router. Tout le front est dans `frontend/`.
+
+**Front-end uniquement** : `backend/` ne contient qu’un `README.md` décrivant l’API Python FastAPI prévue (Isolation Forest / autoencodeur LSTM, `vitals_daily.csv`, `alerts_examples.csv`, capteurs ESP-32). Ne pas y écrire de code ; le contrat à respecter est `docs/API-CONTRACT.md`.
+
+## Dossiers (`frontend/src`)
+- `app/` : `App.tsx` (routeur + fournisseurs), `RoleLayout.tsx` (coque commune : barre du haut, rail, déconnexion), `NotFound.tsx`, `types.ts`, `dev/` (pages de dev derrière drapeau).
+- `api/` : `types.ts` (Astronaut, TelemetrySample, Alert niveau `vert|orange|rouge`, driftScore), `mapping.ts` (JSON snake_case → camelCase, niveau ↔ voyant), `client.ts` (`httpApi`, `VITE_API_URL`, délai 4 s), `mock.ts` (simulateur déterministe), `service.ts` (`api` : mock si `VITE_USE_MOCK=true` ou API injoignable, réessai 30 s), `hooks.ts` (`useTelemetry` 2 s, `useAlerts` 15 s, `useAstronauts` 30 s, `useDataSource`). `QueryClientProvider` dans `App.tsx`.
+- `components/charts/` : `LiveVitalsChart` (FC + SpO₂), `RadiationChart` (µSv/h + mSv) en Recharts. `app/DataSource.tsx` : puce « API connectée / Simulateur » et étiquette `DataTag`.
+- `features/auth/` : `authService.ts` (interface `AuthService`, `DemoAuthService`, `HttpAuthService`), `AuthProvider.tsx` (`useAuth`), `RequireRole.tsx` (garde), `LoginPage.tsx`, `roles.ts` (`ROLE_META`, `homeFor`, `roleFromId`), `useMe.ts`, `types.ts`.
+- `features/astronaute/` : `AstronauteApp.tsx` (routes `/astronaute/*`), `screens.tsx` (A01–A12).
+- `features/medecin-bord/` : `MedecinBordApp.tsx` (routes `/medecin-bord/*`), `screens.tsx` (M01–M11), `Probe.tsx`.
+- `features/nasa/` : `NasaApp.tsx` (routes `/nasa/*`), `screens.tsx` (N01–N06).
+- `features/montre/` : `Watch6.tsx` (écrans montre carrée/ronde, galerie), `watch.css`.
+- `components/ui/` : Icon, Emblem/Logo, Card, Lamp, Avatar, Spark, PageHead, Demo, ThemeProvider/ThemeToggle (import `@/components/ui`).
+- `components/body3d/` : silhouette 3D MakeHuman (`BodyFigure`, `Body3D` chargé à la demande, `zones.ts`, `stills.json`). Modèle : `public/body3d/body.glb` (CC0, voir `LICENSE.md`).
+- `design/` : `tokens.css`, `tokens.ts`, `figma-map.ts` (écran ↔ nœud Figma ↔ route).
+- `data/` : `types.ts` (Light, Member, Report, Role) ; `data/demo/` : `crew.ts`, `regions.ts`, `users.ts` (comptes de démo).
+- `styles/` : `index.css` (ordre d'import), `app.css` (styles des écrans), `features.css` (prédictions, LAD, conducteur, inspecteur, gamification, sons).
+- `features/predictions/` : `ForecastChart` (prévu vs observé + intervalle), `PredictionPanel` (risque, dérive, délai avant seuil, anomalies, inspecteur médecin), `Solutions` (actions par rôle), `AstronautLad`. Données : `api.predictions()`, `api.recommendations()`, `api.updateRecommendation()` ; mock `api/predictMock.ts`.
+- `components/telemetry/` : `TimeConductor` + `ConductorProvider` (temps réel / fixe, inspiré d’Open MCT), `LadTable` (dernières valeurs, coloration des limites).
+- `features/gamification/` : `data.ts` (missions, badges de régularité), `store.ts` (état par astronaute, `localStorage["pulsar.gamification.<id>"]`), `components.tsx`, `pages.tsx` (Objectifs, Réglages, participation médecin). Règles CDC EF-42/43/44 : jamais de valeur de santé, pas de classement, désactivable.
+- `features/sound/` : `settings.ts` (logique pure, testée), `engine.ts` (Web Audio, motifs IEC 60601-1-8), `SoundProvider` (alarmes, acquittement, pause 2 min), `ui.tsx` (bandeau d’alarme, menu son), `AlarmWatcher`.
+- `features/landing/` : page d’accueil publique (`LandingPage`, `Starfield`, `BodyDemo`, `content.ts`, `landing.css`).
+
+## Rôles et routes
+| Rôle | Préfixe identifiant | Route | Voit |
+|---|---|---|---|
+| `astronaute` | `AST-` | `/astronaute` (+ `/predictions`, `/objectifs`, `/reglages`, `/silhouette`, `/scan`, `/kits`, `/bien-etre`, `/montre`, `/montre/ecrans`, `/rappels`, `/mode-bras`) | **uniquement ses propres données** (`useMe()`) |
+| `medecin-bord` | `CMO-` | `/medecin-bord` (+ `/predictions/:id`, `/dossier/:id`, `/echographie/:step`, `/journal`) | tout l'équipage |
+| `nasa` | `NASA-FS-` | `/nasa` (+ `/rapport/:id`, `/reponse`, `/liaison`) | les rapports reçus au sol |
+
+## Authentification
+- `/` = page d’accueil **publique** (`features/landing/`, chargée à la demande) avec bouton « Se connecter » → `/connexion`. `/login` redirige vers `/connexion`.
+- Écran de connexion unique `/connexion` (logo, intro mission, photo, formulaire) — **pas** d’écran « Choix du profil », **pas** de liste de comptes dans l’UI. Identifiant personnel + code → `authService.login()` → session `localStorage["pulsar.session"]` (12 h) → redirection vers `homeFor(role)`.
+- `RequireRole` : sans session → `/connexion` ; session ouverte sur `/connexion` → tableau de bord ; mauvais rôle → son propre tableau de bord (message « Accès réservé »).
+- Actuellement **DÉMO** (`DemoAuthService`, comptes dans `data/demo/users.ts`). Pour un vrai backend : définir `VITE_AUTH_API_URL` → `HttpAuthService` (POST `/auth/login`, POST `/auth/logout`), puis supprimer `users.ts`. Ne jamais mettre de secret réel dans le front.
+- Ajouter un utilisateur de démo : une ligne dans `users.ts` (+ `crewId` lié à `crew.ts` pour astronaute/médecin de bord) + ligne dans `docs/ROLES-ET-IDENTIFIANTS.md`.
+
+## Conventions
+- Alias `@/` = `frontend/src/`. Composants en PascalCase, un écran = une fonction exportée dans `features/<rôle>/screens.tsx` (découper en fichiers si > ~300 lignes).
+- Nouvel écran : 1) maquette Figma (`get_design_context`, voir figma.mdc) 2) route dans `<Rôle>App.tsx` + entrée du rail si besoin 3) entrée dans `design/figma-map.ts` 4) test dans `tests/smoke.spec.ts` si parcours clé.
+- Pages de dev (`app/dev/flags.ts`) seulement en `npm run dev` : `?capture=1`, `?stillset`, `?wtgrid`, `?wt=square&v=home`, `?still=front`.
+
+## Commandes (dans `frontend/`)
+- Variables : `frontend/.env.example` (`VITE_API_URL`, `VITE_USE_MOCK`, `VITE_AUTH_API_URL`, `VITE_DEV_TOOLS`). Les tests Playwright forcent `VITE_USE_MOCK=true`.
+- `npm install` · `npm run dev` (http://localhost:5173) · `npm run typecheck` · `npm run build` · `npm run preview`
+- Tests : `npm run test:e2e:install` (une fois) puis `npm run test:e2e` (Playwright : `smoke.spec.ts` connexion par identifiant, `features.spec.ts` accueil / prédictions / gamification / sons, `sound.spec.ts` logique des réglages son).

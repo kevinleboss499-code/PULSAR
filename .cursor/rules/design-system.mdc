@@ -1,0 +1,56 @@
+---
+description: Système de design PULSAR v6 (tokens, typo, icônes, couleurs d'état, thèmes, interdits)
+alwaysApply: true
+---
+
+# Système de design PULSAR v6 — à respecter dans TOUT code front-end
+
+## Tokens (source unique)
+- CSS : `frontend/src/design/tokens.css` (variables `--bg`, `--surface`, `--surface-2`, `--line`, `--line-strong`, `--text`, `--text-2`, `--text-3`, `--accent`, `--on-accent`, `--band`, `--focus`, `--ok`, `--medium`, `--high`, `--low` + `-bg`, espacements `--s1…--s8` (grille 8 px), rayons `--radius` 4 px / `--radius-lg` 8 px / `--pill`).
+- TS : `frontend/src/design/tokens.ts` (même valeurs, pour three.js, SVG, tests). Les deux fichiers doivent rester identiques.
+- Tailwind v4 est branché sur ces tokens (`bg-surface`, `text-text-2`, `border-line`, `text-medium`, `font-mono`, `p-s4`…). Pas de preflight.
+- **Jamais de couleur, taille ou police en dur** dans un composant. Pas de nouvelle couleur sans l'ajouter aux deux fichiers de tokens.
+
+## Typographie (SIL OFL 1.1, fichiers dans `public/fonts`)
+- **Space Grotesk** : titres (`--font-head`). **IBM Plex Sans** : interface et texte (`--font-sans`). **IBM Plex Mono** : chiffres, unités, heures, identifiants, sur-titres (`--font-mono`, classe `.mono`).
+- Langue de l'interface : **français** (espaces fines avant « : ; ? ! », guillemets « »), unités SI.
+
+## Icônes
+- **lucide-react** (ISC), trait 1,75, uniquement via `<Icon name="…" />` (`@/components/ui`). Les noms sont sémantiques (ex. `favorite`, `monitor_heart`) et associés aux composants lucide dans la table `ICONS` de `components/ui/Icon.tsx` ; pour en ajouter un, ajouter une ligne à cette table. Pas d'autre bibliothèque d'icônes.
+
+## Graphiques
+- **Recharts** uniquement (`components/charts/`, `components/ui/Spark.tsx`). Lignes fines, pas d'aire dégradée, pas d'ombre, grille discrète `--line`, axes en IBM Plex Mono (`--text-3`), couleurs des tokens (`--accent` FC, `--text-2` SpO₂, `--high` pour les seuils). `isAnimationActive={false}` pour le temps réel.
+- Données simulées → étiquette DÉMO (`<DataTag />`).
+
+## Couleurs d'état (NASA C&W / IEC 60601-1-8)
+- Couleur d'état **uniquement hors nominal** : attention = `--medium` (jaune/orange), alerte = `--high` (rouge), info = `--low`. Le nominal reste neutre (gris/cyan discret).
+- **Toujours icône + mot** (`<Lamp l="caution" />` → ⚠ « Attention ») : jamais la couleur seule.
+- Silhouette 3D : corps gris mat `#a4abb4`, teinte discrète par zone (`body3d` dans tokens.ts), contour fin, aucun halo.
+
+## Thèmes
+- Sombre (« espace », par défaut) et clair (« blanc clinique ») via `data-theme` sur `<html>` (`ThemeProvider`, `ThemeToggle`). Tout nouvel écran doit être vérifié dans **les deux** thèmes (contraste AA minimum).
+
+## Interdits (« pas d'effet IA »)
+- Pas de glow / ombre lumineuse, pas de dégradé décoratif, pas de flou d'arrière-plan / verre dépoli, pas d'étincelles, pas d'emoji dans l'UI, pas d'animation gratuite.
+- Animations (Motion) : courtes (`motion` dans tokens.ts : 0,2–0,28 s, easing out), respect de `prefers-reduced-motion` (`MotionConfig reducedMotion="user"`).
+
+## Données
+- Toute valeur personnelle non mesurée affiche l'étiquette **DÉMO** (`<Demo />`).
+- Cibles tactiles ≥ 44 px (≥ 48 px tablette médicale, ≥ 96 px mode bras / gants).
+- Accessibilité : vrais `<button>`/`<a>`, `aria-current`, `aria-pressed`, `role="alert"` pour les erreurs, focus visible `--focus`.
+
+## Télémétrie dense (design PULSAR — pas de cadrage Open MCT)
+- `LadTable` (nom · heure · valeur · unité · seuils), lignes hors limites `is-limit--caution|warning` avec icône + flèche, données périmées `is-stale`.
+- Graphiques temps réel sous `TimeConductor` (temps réel / fixe). Détails du médecin dans un panneau `Inspecteur`.
+- Workflow unifié : Nouveau · Vu · Pris en charge · Résolu · Escaladé + responsable (`WorkflowBadge`).
+- Sons : pas d’icône chrome ; panneau dans l’app / Réglages ; pause rouge 2 min seulement après « vu ».
+
+## Prédictions
+- Observé = ligne pleine, prévu = tirets, intervalle de confiance = aire unie très claire (pas de dégradé), seuils en `--medium`/`--high`.
+- Toujours la mention « Aide à la décision, pas un diagnostic ». Astronaute : langage simple ; médecin : détail.
+
+## Gamification (CDC § 5.9)
+- Uniquement la régularité (mesures faites, routines suivies) ; jamais de valeur de santé, jamais de classement, désactivable (Réglages). Visuel sobre, pas de confettis.
+
+## Sons
+- Seulement via `useSound().play(id)` / `SoundButton` (`features/sound`). Sons synthétisés (Web Audio), motifs IEC 60601-1-8. Toujours accompagnés d’un signal visuel. L’alarme rouge n’est jamais coupée par la sourdine (pause 2 min ou acquittement). Sons de la page d’accueil désactivés par défaut.

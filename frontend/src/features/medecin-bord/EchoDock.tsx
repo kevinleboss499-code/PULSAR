@@ -1,0 +1,121 @@
+/* Barre de liaison sonde — visible sur tout l’examen, avant de passer à l’étape suivante. */
+import { useRef, useState, type ReactNode } from "react";
+import { Demo, Icon } from "@/components/ui";
+
+const KEY = "pulsar.echo.exam";
+
+export type EchoExam = {
+  linked: boolean;
+  battery: number;
+  checks: [boolean, boolean, boolean];
+  reached: number;
+  zone: string;
+  placed: boolean;
+  note: string;
+};
+
+const FRESH: EchoExam = {
+  linked: false,
+  battery: 76,
+  checks: [false, false, false],
+  reached: 1,
+  zone: "heart",
+  placed: false,
+  note: "Coupe 4 cavités. VG 4,1 cm. Pas d’épanchement visible. Avis du sol souhaité.",
+};
+
+function loadExam(): EchoExam {
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (!raw) return { ...FRESH, checks: [false, false, false] };
+    const p = JSON.parse(raw) as Partial<EchoExam>;
+    const checks: [boolean, boolean, boolean] = Array.isArray(p.checks) && p.checks.length === 3
+      ? [!!p.checks[0], !!p.checks[1], !!p.checks[2]]
+      : [false, false, false];
+    const zone = typeof p.zone === "string" && p.zone ? p.zone : FRESH.zone;
+    return {
+      linked: !!p.linked,
+      battery: 76,
+      checks,
+      reached: Math.min(6, Math.max(1, Number(p.reached) || 1)),
+      zone,
+      placed: !!p.placed,
+      note: typeof p.note === "string" ? p.note : FRESH.note,
+    };
+  } catch {
+    return { ...FRESH, checks: [false, false, false] };
+  }
+}
+
+export function useEchoExam() {
+  const [exam, setExam] = useState<EchoExam>(loadExam);
+  const ref = useRef(exam);
+  ref.current = exam;
+  const patch = (partial: Partial<EchoExam>) => {
+    const next = { ...ref.current, ...partial };
+    ref.current = next;
+    setExam(next);
+    try { localStorage.setItem(KEY, JSON.stringify(next)); } catch { /* stockage indisponible */ }
+  };
+  const reset = () => patch({ ...FRESH, checks: [false, false, false] });
+  return { exam, patch, reset };
+}
+
+/** Jauge de batterie sonde : barre + éclair + pourcentage. Pas de halo. */
+export function ProbeBattery({ pct, linked }: { pct: number; linked: boolean }) {
+  const level = !linked ? "off" : pct < 20 ? "low" : pct < 40 ? "mid" : "ok";
+  const shown = linked ? pct : 0;
+  return (
+    <div
+      className={`probe-bat is-${level}`}
+      style={{ ["--bat" as string]: `${shown}%` }}
+      role="meter"
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={shown}
+      aria-valuetext={linked ? `${pct} pour cent` : "Sonde non reliée"}
+      aria-label="Batterie de la sonde"
+    >
+      <span className="probe-bat-fill" />
+      <span className="probe-bat-read">
+        <Icon name="bolt" size={14} />
+        <b>{linked ? pct : "–"}</b>
+      </span>
+    </div>
+  );
+}
+
+export function EchoDock({
+  linked,
+  battery,
+  hint,
+  onBack,
+  children,
+}: {
+  linked: boolean;
+  battery: number;
+  hint: string;
+  onBack?: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <footer className="echo-dock" aria-label="Liaison de la sonde">
+      <div className="echo-dock-status">
+        <span className={`echo-dock-mark${linked ? " is-on" : ""}`} aria-hidden="true">
+          <Icon name={linked ? "link" : "link_off"} size={18} />
+        </span>
+        <div>
+          <strong>{linked ? "Liaison sonde" : "Sonde non reliée"}</strong>
+          <span>{linked ? "USB-C · tablette médicale" : "En attente du branchement"}</span>
+        </div>
+      </div>
+      <ProbeBattery pct={battery} linked={linked} />
+      {linked && <Demo />}
+      <p className="echo-dock-hint" role="status">{hint}</p>
+      <div className="echo-dock-actions">
+        {onBack && <button type="button" className="btn btn-secondary" onClick={onBack}>Retour</button>}
+        {children}
+      </div>
+    </footer>
+  );
+}

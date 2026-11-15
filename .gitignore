@@ -1,0 +1,31 @@
+# Dépendances et builds
+node_modules/
+dist/
+dist-ssr/
+*.local
+.vite/
+
+# Tests
+frontend/test-results/
+frontend/playwright-report/
+frontend/blob-report/
+frontend/playwright/.cache/
+
+# Environnement (ne jamais committer de secrets)
+.env
+.env.*
+!.env.example
+
+# Cache SVG Figma (npm run figma:icons) — régénéré, sans jeton
+frontend/public/figma-icons/*
+!frontend/public/figma-icons/.gitkeep
+
+# Éditeurs / OS
+.DS_Store
+Thumbs.db
+desktop.ini
+*.log
+npm-debug.log*
+.idea/
+.vscode/*
+!.vscode/extensions.json

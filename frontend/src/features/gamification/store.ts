@@ -1,0 +1,85 @@
+/* État local de la gamification, PAR astronaute (clé = code équipage), persistant (localStorage) :
+   activée/désactivée (EF-44) + missions du jour cochées. Synchronisé entre composants et onglets. */
+import { useCallback, useSyncExternalStore } from "react";
+import { HISTORY, MEASURES, MISSIONS, PRESET_DONE, TODAY_DEMO, profileFor } from "./data";
+import { CREW } from "@/data/demo/crew";
+
+type State = { enabled: boolean; day: string; done: string[] };
+const KEY = (id: string) => `pulsar.gamification.${id}`;
+const today = () => new Date().toISOString().slice(0, 10);
+const EVT = "pulsar-gamification";
+
+export function readState(id: string): State {
+  try {
+    const s = JSON.parse(localStorage.getItem(KEY(id)) || "null") as State | null;
+    if (s) return s.day === today() ? s : { ...s, day: today(), done: [...PRESET_DONE] };
+  } catch { /* état illisible : valeurs par défaut */ }
+  return { enabled: true, day: today(), done: [...PRESET_DONE] };
+}
+function write(id: string, s: State) { localStorage.setItem(KEY(id), JSON.stringify(s)); window.dispatchEvent(new Event(EVT)); }
+const subscribe = (f: () => void) => { window.addEventListener(EVT, f); window.addEventListener("storage", f); return () => { window.removeEventListener(EVT, f); window.removeEventListener("storage", f); }; };
+
+/** Mesures du jour faites par un membre (état local s’il existe, sinon démo). */
+export function measuresDone(id: string) {
+  const raw = localStorage.getItem(KEY(id));
+  return raw ? readState(id).done.filter((d) => MEASURES.some((m) => m.id === d)).length : TODAY_DEMO[id] ?? 0;
+}
+/** Objectif coopératif (EF-43) : % des mesures du jour faites par TOUT l’équipage, sans détail individuel côté astronaute. */
+export function crewGoal() {
+  const total = CREW.length * MEASURES.length;
+  const done = CREW.reduce((a, m) => a + measuresDone(m.id), 0);
+  return { done, total, pct: Math.round((done / total) * 100) };
+}
+
+export function useGamification(id: string) {
+  const snap = useSyncExternalStore(subscribe, () => localStorage.getItem(KEY(id)) ?? "", () => "");
+  const s = readState(id);
+  void snap;
+  const setEnabled = useCallback((enabled: boolean) => write(id, { ...readState(id), enabled }), [id]);
+  const toggle = useCallback((mid: string) => { const st = readState(id); const adding = !st.done.includes(mid); write(id, { ...st, done: adding ? [...st.done, mid] : st.done.filter((x) => x !== mid) }); return adding; }, [id]);
+  const markDone = useCallback((mid: string) => { const st = readState(id); if (st.done.includes(mid)) return false; write(id, { ...st, done: [...st.done, mid] }); return true; }, [id]);
+  const h = HISTORY[id] ?? HISTORY.AM;
+  const measuresDoneCount = MEASURES.filter((m) => s.done.includes(m.id)).length;
+  const { streak, badges, grade } = profileFor(id, measuresDoneCount);
+  const measuresComplete = measuresDoneCount >= MEASURES.length;
+  const doneMissions = s.done.length;
+  /** XP de régularité uniquement (missions cochées + série) — jamais une valeur de santé. */
+  const xp = doneMissions * 25 + streak * 5;
+  return {
+    enabled: s.enabled, setEnabled, toggle, markDone,
+    missions: MISSIONS.map((m) => ({ ...m, done: s.done.includes(m.id) })),
+    measuresComplete, streak, missedDaysAgo: h.missedDaysAgo,
+    badges, grade, crew: crewGoal(),
+    xp, doneMissions,
+  };
+}
+
+/** XP démo pour un membre (même formule que l’état local). */
+export function xpFor(id: string) {
+  const done = measuresDone(id);
+  const routines = readState(id).done.length - done;
+  const h = HISTORY[id] ?? HISTORY.AM;
+  const complete = done >= MEASURES.length;
+  const streak = h.streak + (complete ? 1 : 0);
+  return (done + Math.max(0, routines)) * 25 + streak * 5;
+}
+
+/** Lecture seule pour un autre écran (médecin de bord) : la gamification est-elle activée pour ce membre ? */
+export function useCrewGamificationSnapshot() {
+  useSyncExternalStore(subscribe, () => CREW.map((m) => localStorage.getItem(KEY(m.id)) ?? "").join("|"), () => "");
+  const members = CREW.map((m) => {
+    const done = measuresDone(m.id);
+    return {
+      id: m.id,
+      name: m.name,
+      cabin: m.cabin,
+      done,
+      total: MEASURES.length,
+      enabled: readState(m.id).enabled,
+      xp: xpFor(m.id),
+      grade: profileFor(m.id, done).grade.current.label,
+    };
+  });
+  const poolXp = members.reduce((a, m) => a + m.xp, 0);
+  return { goal: crewGoal(), members, poolXp };
+}

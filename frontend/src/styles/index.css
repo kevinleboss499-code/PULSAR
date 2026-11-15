@@ -1,0 +1,8 @@
+/* Ordre : Tailwind (thème + utilitaires, sans preflight) → jetons → styles des écrans */
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+@import "../design/tokens.css";
+@import "./app.css";
+@import "./features.css";
+@import "./hud.css";

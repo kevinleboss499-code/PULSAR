@@ -1,0 +1,82 @@
+# Fichiers modifiés — prédictions, gamification, accueil, Open MCT, sons
+
+## Nouveaux (41)
+A  CHANGEMENTS.md
+A  docs/screens/projet-accueil-landing.png
+A  docs/screens/projet-accueil-mobile.png
+A  docs/screens/projet-accueil-page-complete.png
+A  docs/screens/projet-dossier-lad-conducteur.png
+A  docs/screens/projet-montre-complication.png
+A  docs/screens/projet-objectifs-gamification.png
+A  docs/screens/projet-predictions-astronaute.png
+A  docs/screens/projet-predictions-medecin.png
+A  docs/screens/projet-rapport-nasa-predictions.png
+A  frontend/src/api/predictMock.ts
+A  frontend/src/components/telemetry/LadTable.tsx
+A  frontend/src/components/telemetry/conductor.tsx
+A  frontend/src/components/telemetry/index.ts
+A  frontend/src/features/astronaute/Predictions.tsx
+A  frontend/src/features/gamification/components.tsx
+A  frontend/src/features/gamification/data.ts
+A  frontend/src/features/gamification/index.ts
+A  frontend/src/features/gamification/pages.tsx
+A  frontend/src/features/gamification/store.ts
+A  frontend/src/features/landing/BodyDemo.tsx
+A  frontend/src/features/landing/LandingPage.tsx
+A  frontend/src/features/landing/Starfield.tsx
+A  frontend/src/features/landing/content.ts
+A  frontend/src/features/landing/landing.css
+A  frontend/src/features/medecin-bord/Predictions.tsx
+A  frontend/src/features/nasa/PredictionsSummary.tsx
+A  frontend/src/features/predictions/AstronautLad.tsx
+A  frontend/src/features/predictions/ForecastChart.tsx
+A  frontend/src/features/predictions/PredictionPanel.tsx
+A  frontend/src/features/predictions/Solutions.tsx
+A  frontend/src/features/predictions/index.ts
+A  frontend/src/features/sound/AlarmWatcher.tsx
+A  frontend/src/features/sound/SoundProvider.tsx
+A  frontend/src/features/sound/engine.ts
+A  frontend/src/features/sound/index.ts
+A  frontend/src/features/sound/settings.ts
+A  frontend/src/features/sound/ui.tsx
+A  frontend/src/styles/features.css
+A  frontend/tests/features.spec.ts
+A  frontend/tests/sound.spec.ts
+
+## Modifiés (34)
+M  .cursor/rules/design-system.mdc
+M  .cursor/rules/figma.mdc
+M  .cursor/rules/project.mdc
+M  AGENTS.md
+M  README.md
+M  backend/README.md
+M  docs/API-CONTRACT.md
+M  docs/DESIGN.md
+M  docs/ROLES-ET-IDENTIFIANTS.md
+M  docs/screens/projet-astronaute-AST-001.png
+M  docs/screens/projet-connexion-clair.png
+M  docs/screens/projet-connexion.png
+M  frontend/src/api/client.ts
+M  frontend/src/api/hooks.ts
+M  frontend/src/api/index.ts
+M  frontend/src/api/mapping.ts
+M  frontend/src/api/mock.ts
+M  frontend/src/api/service.ts
+M  frontend/src/api/types.ts
+M  frontend/src/app/App.tsx
+M  frontend/src/app/RoleLayout.tsx
+M  frontend/src/components/charts/LiveVitals.tsx
+M  frontend/src/components/ui/Icon.tsx
+M  frontend/src/features/astronaute/AstronauteApp.tsx
+M  frontend/src/features/astronaute/screens.tsx
+M  frontend/src/features/auth/LoginPage.tsx
+M  frontend/src/features/auth/RequireRole.tsx
+M  frontend/src/features/medecin-bord/MedecinBordApp.tsx
+M  frontend/src/features/medecin-bord/screens.tsx
+M  frontend/src/features/montre/Watch6.tsx
+M  frontend/src/features/montre/watch.css
+M  frontend/src/features/nasa/screens.tsx
+M  frontend/src/styles/index.css
+M  frontend/tests/smoke.spec.ts
+
+## Supprimés (0)

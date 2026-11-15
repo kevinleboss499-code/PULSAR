@@ -1,0 +1,66 @@
+/* Conducteur de temps (inspiré du « Time Conductor » de NASA Open MCT, sans reprise de code) :
+   - Temps réel : fenêtre glissante qui se termine à « maintenant » (1, 2 ou 5 min), rafraîchie en continu.
+   - Fixe : fenêtre figée [début, fin] que l’on peut décaler ; plus de rafraîchissement.
+   Un seul conducteur pilote toutes les courbes temps réel d’un écran (contexte React). */
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { Icon } from "@/components/ui";
+
+export type ConductorMode = "realtime" | "fixed";
+export type Conductor = { mode: ConductorMode; spanSec: number; end: number | null; setMode: (m: ConductorMode) => void; setSpan: (s: number) => void; shift: (sec: number) => void };
+const STEP = 2; // pas d’échantillonnage de la télémétrie (s)
+const Ctx = createContext<Conductor | null>(null);
+
+export function ConductorProvider({ children, span = 120 }: { children: ReactNode; span?: number }) {
+  const [mode, setModeS] = useState<ConductorMode>("realtime");
+  const [spanSec, setSpan] = useState(span);
+  const [end, setEnd] = useState<number | null>(null);
+  const value = useMemo<Conductor>(() => ({
+    mode, spanSec, end,
+    setMode: (m) => { setModeS(m); setEnd(m === "fixed" ? Math.floor(Date.now() / 1000 / STEP) * STEP * 1000 : null); },
+    setSpan,
+    shift: (sec) => setEnd((e) => (e == null ? e : Math.min(Date.now(), e + sec * 1000))),
+  }), [mode, spanSec, end]);
+  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
+}
+
+/** Paramètres de requête pour useTelemetry selon le conducteur (ou temps réel 2 min par défaut). */
+export function useConductorQuery() {
+  const c = useContext(Ctx);
+  const spanSec = c?.spanSec ?? 120;
+  return { limit: Math.round(spanSec / STEP), until: c?.mode === "fixed" && c.end ? new Date(c.end).toISOString() : undefined, mode: c?.mode ?? "realtime" };
+}
+
+const fmt = (t: number) => new Date(t).toISOString().slice(11, 19);
+function Clock() {
+  const [t, setT] = useState(Date.now());
+  useEffect(() => { const i = window.setInterval(() => setT(Date.now()), 1000); return () => window.clearInterval(i); }, []);
+  return <span className="mono">{fmt(t)} UTC</span>;
+}
+
+export function TimeConductor() {
+  const c = useContext(Ctx);
+  if (!c) return null;
+  const end = c.end ?? Date.now();
+  return (
+    <div className={`conductor is-${c.mode}`} role="group" aria-label="Conducteur de temps">
+      <div className="seg2" role="group" aria-label="Mode">
+        <button aria-pressed={c.mode === "realtime"} onClick={() => c.setMode("realtime")}><Icon name="play_arrow" size={14} /> Temps réel</button>
+        <button aria-pressed={c.mode === "fixed"} onClick={() => c.setMode("fixed")}><Icon name="pause" size={14} /> Fixe</button>
+      </div>
+      {c.mode === "realtime" ? (
+        <>
+          <div className="seg2" role="group" aria-label="Fenêtre">
+            {[60, 120, 300].map((s) => <button key={s} aria-pressed={c.spanSec === s} onClick={() => c.setSpan(s)}>{s / 60} min</button>)}
+          </div>
+          <span className="conductor-range"><span className="muted">fin</span> <Clock /> <span className="muted">· fenêtre glissante</span></span>
+        </>
+      ) : (
+        <>
+          <span className="conductor-range mono" data-testid="conductor-range">{fmt(end - c.spanSec * 1000)} → {fmt(end)} UTC</span>
+          <button className="btn btn-ghost sm" onClick={() => c.shift(-c.spanSec / 2)} aria-label="Reculer d’une demi-fenêtre"><Icon name="arrow_back" size={16} /></button>
+          <button className="btn btn-ghost sm" onClick={() => c.shift(c.spanSec / 2)} aria-label="Avancer d’une demi-fenêtre"><Icon name="arrow_forward" size={16} /></button>
+        </>
+      )}
+    </div>
+  );
+}

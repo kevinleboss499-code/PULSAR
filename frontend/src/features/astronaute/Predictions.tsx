@@ -1,0 +1,14 @@
+/* A15 · Prévisions (astronaute) : SES prévisions et solutions uniquement, en langage simple. */
+import { PageHead as Head } from "@/components/ui";
+import { useMe } from "@/features/auth/useMe";
+import { PredictionPanel } from "@/features/predictions";
+
+export function AstroPredictions() {
+  const ME = useMe();
+  return (
+    <>
+      <Head title="Vos prévisions" sub="Ce que vos mesures annoncent pour les prochaines heures et les prochains jours, et ce que vous pouvez faire." />
+      <PredictionPanel astronautId={ME.id} role="astronaute" />
+    </>
+  );
+}

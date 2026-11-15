@@ -1,0 +1,82 @@
+---
+description: Lien Figma ↔ code PULSAR v6 — à lire avant de créer ou modifier un écran, un composant ou un style
+globs: frontend/src/**/*.tsx, frontend/src/**/*.css, frontend/src/design/**
+alwaysApply: false
+---
+
+# Figma — source de vérité visuelle
+- Fichier : https://www.figma.com/design/cj96CiSofo2y0mDSpre7J1/PULSAR-AHM-v6
+- fileKey : `cj96CiSofo2y0mDSpre7J1` (serveur MCP « figma » : `.cursor/mcp.json`)
+- Table complète écran ↔ nœud ↔ route : `frontend/src/design/figma-map.ts` et `docs/DESIGN.md`.
+
+## Méthode obligatoire
+1. Avant de construire ou changer un écran, trouver son code (A01…, M01…, N01…, WC/WR…) dans `figma-map.ts`.
+2. Appeler l’outil MCP Figma **`get_design_context`** avec `fileKey: "cj96CiSofo2y0mDSpre7J1"` et `nodeId` = le nœud **maquette** (ex. `34:5` pour A01). Utiliser aussi `get_screenshot` sur le même nœud pour comparer.
+3. Réutiliser les composants existants (`@/components/ui`, `@/components/body3d`, `features/*/screens.tsx`) et les classes de `styles/app.css`. Ne pas copier le code généré par Figma tel quel : le traduire avec nos tokens (`var(--…)` / classes Tailwind `bg-surface`, `text-text-2`…).
+4. Les maquettes contiennent un cadre d’appareil (« Cadre appareil · … ») : n’implémenter que l’écran à l’intérieur.
+5. Comparer le résultat avec la capture `docs/screens/…` correspondante (sombre ET clair).
+
+## Pages
+- Couverture : `0:1`
+- Vue d’ensemble : `1:2`
+- Astronaute : `1:3`
+- Montre : `41:2`
+- Médecin de bord : `1:4`
+- NASA Houston : `1:5`
+- Prototype : `1:6`
+
+## Écrans (maquette → route)
+- A01 Accueil : maquette `34:5` · proto `36:219` → `/astronaute` (1194×834, sombre)
+- A02 Silhouette santé : maquette `34:9` · proto `36:453` → `/astronaute/silhouette` (1194×834, sombre)
+- A03 Scan visage (fatigue) : maquette `34:13` · proto `36:621` → `/astronaute/scan` (1194×834, sombre)
+- A04 Kits glycémie + tension : maquette `34:17` · proto `36:772` → `/astronaute/kits` (1194×834, sombre)
+- A05 Bien-être : maquette `34:21` · proto `36:927` → `/astronaute/bien-etre` (1194×834, sombre)
+- A06 Montre (synchro) : maquette `34:25` · proto `36:1092` → `/astronaute/montre` (1194×834, sombre)
+- A07 Rappels de mesure : maquette `34:29` · proto `36:1262` → `/astronaute/rappels` (1194×834, sombre)
+- A08 Accueil (thème clair) : maquette `34:33` · proto `36:1423` → `/astronaute` (1194×834, clair)
+- A09 Accueil : maquette `34:40` · proto `36:1657` → `/astronaute` (834×1194, sombre)
+- A10 Scan visage : maquette `34:44` · proto `36:1877` → `/astronaute/scan` (834×1194, sombre)
+- A11 Mode bras · sombre : maquette `34:51` · proto `36:2014` → `/astronaute/mode-bras` (1080×700, sombre)
+- A12 Mode bras · clair : maquette `34:55` · proto `36:2065` → `/astronaute/mode-bras` (1080×700, clair)
+- A13 Écrans de la montre (v6) : maquette `34:62` · proto `36:2116` → `/astronaute/montre/ecrans` (—, sombre)
+- A14 Silhouette 3D (face, ¾, dos) : maquette `84:5983` · proto `84:6357` → `/?stillset (dev)` (1920×1080, sombre)
+- M01 Voyants de l’équipage : maquette `34:69` · proto `36:2378` → `/medecin-bord` (1194×834, sombre)
+- M02 Dossier Lina Kovacs : maquette `34:73` · proto `36:2707` → `/medecin-bord/dossier/LK` (1194×834, sombre)
+- M03 1 Connexion sonde : maquette `34:84` · proto `36:2920` → `/medecin-bord/echographie/1` (1194×834, sombre)
+- M04 2 Zone d’examen : maquette `34:88` · proto `36:3082` → `/medecin-bord/echographie/2` (1194×834, sombre)
+- M05 3 Positionnement guidé : maquette `34:92` · proto `36:3282` → `/medecin-bord/echographie/3` (1194×834, sombre)
+- M06 4 Image en direct : maquette `34:96` · proto `36:3464` → `/medecin-bord/echographie/4` (1194×834, sombre)
+- M07 5 Annotation : maquette `34:100` · proto `36:3634` → `/medecin-bord/echographie/5` (1194×834, sombre)
+- M08 6 Joindre et envoyer : maquette `34:104` · proto `36:3796` → `/medecin-bord/echographie/6` (1194×834, sombre)
+- M09 Voyants (thème clair) : maquette `34:77` · proto `36:3992` → `/medecin-bord` (1194×834, clair)
+- M10 Voyants de l’équipage : maquette `34:111` · proto `36:4321` → `/medecin-bord` (1920×1080, sombre)
+- M11 Image écho en direct : maquette `34:118` · proto `36:4650` → `/medecin-bord/echographie/4` (1920×1080, sombre)
+- N01 Rapports + détail : maquette `34:128` · proto `36:4817` → `/nasa` (1440×900, sombre)
+- N02 Rapport alerte rouge : maquette `34:135` · proto `36:5311` → `/nasa/rapport/R-126-A1` (1440×900, sombre)
+- N03 Recommandation (file montante) : maquette `34:142` · proto `36:5763` → `/nasa/reponse` (1440×900, sombre)
+- N04 Fenêtres de liaison : maquette `34:149` · proto `36:5909` → `/nasa/liaison` (1440×900, sombre)
+- N05 Rapports (thème clair) : maquette `34:156` · proto `36:6157` → `/nasa` (1440×900, clair)
+- N06 Rapports + visionneuse : maquette `34:166` · proto `36:6651` → `/nasa` (2560×1440, sombre)
+- Montre (page `41:2`) : WC01 `70:27`, WC02 `70:31`, WC03 `70:35`, WC04 `70:39`, WC05 `70:43`, WC06 `70:47`, WC07 `70:51`, WC08 `70:55`, WR01 `70:59`, WR02 `70:63`, WR03 `70:67`, WR04 `70:71`, WR05 `70:75`, WR06 `70:79`, WR07 `70:83`, WR08 `70:87` → `features/montre/Watch6.tsx`
+
+## Prototypes (points de départ)
+- 0 · Index (tous les écrans) : https://www.figma.com/proto/cj96CiSofo2y0mDSpre7J1/PULSAR-AHM-v6?node-id=36-4&starting-point-node-id=36%3A4
+- 1 · Astronaute — tablette : https://www.figma.com/proto/cj96CiSofo2y0mDSpre7J1/PULSAR-AHM-v6?node-id=36-219&starting-point-node-id=36%3A219
+- 2 · Médecin de bord — alerte orange → échographie : https://www.figma.com/proto/cj96CiSofo2y0mDSpre7J1/PULSAR-AHM-v6?node-id=36-2378&starting-point-node-id=36%3A2378
+- 3 · NASA Houston — rapports : https://www.figma.com/proto/cj96CiSofo2y0mDSpre7J1/PULSAR-AHM-v6?node-id=36-4817&starting-point-node-id=36%3A4817
+- 4 · Choix du profil : https://www.figma.com/proto/cj96CiSofo2y0mDSpre7J1/PULSAR-AHM-v6?node-id=36-112&starting-point-node-id=36%3A112
+- 5 · Montre carrée — cadran → mini silhouette : https://www.figma.com/proto/cj96CiSofo2y0mDSpre7J1/PULSAR-AHM-v6?node-id=71-1651&starting-point-node-id=71%3A1651
+- 6 · Montre carrée — alerte orange → respiration : https://www.figma.com/proto/cj96CiSofo2y0mDSpre7J1/PULSAR-AHM-v6?node-id=71-1655&starting-point-node-id=71%3A1655
+- 7 · Montre ronde — cadran : https://www.figma.com/proto/cj96CiSofo2y0mDSpre7J1/PULSAR-AHM-v6?node-id=71-1667&starting-point-node-id=71%3A1667
+- 8 · Montre ronde — alerte orange : https://www.figma.com/proto/cj96CiSofo2y0mDSpre7J1/PULSAR-AHM-v6?node-id=71-1671&starting-point-node-id=71%3A1671
+- 8 · Montre ronde — alerte rouge → médecin de bord : https://www.figma.com/proto/cj96CiSofo2y0mDSpre7J1/PULSAR-AHM-v6?node-id=71-1673&starting-point-node-id=71%3A1673
+
+## Écarts voulus entre Figma et le code
+- O01 « Choix du profil » → **supprimé** ; remplacé par l’écran de connexion unique `/connexion` (précédé de la page d’accueil publique `/`, hors Figma) (logo, intro, photo, identifiant personnel + code). Rôle déduit de l’identifiant, aucun sélecteur ni liste de comptes dans l’UI.
+- Icônes : Figma utilise Material Symbols ; le code utilise **lucide-react** (équivalent le plus proche, table `ICONS` de `components/ui/Icon.tsx`).
+- Courbes : tracés Figma statiques → **Recharts** alimentés par `src/api` (simulateur tant que le backend n’existe pas).
+- Sélecteur de rôle du haut (Astronaute / Médecin de bord / NASA Houston) → remplacé par l’utilisateur connecté + déconnexion (`app/RoleLayout.tsx`).
+- Astronaute : « Prévenir le médecin de bord » confirme localement (l’astronaute n’a pas accès à l’espace médecin).
+
+## Écarts ajoutés hors Figma (à reporter dans le fichier si besoin)
+- Page d’accueil publique `/`, écrans Prévisions (astronaute), Prédictions (médecin de bord), synthèse prédictions dans les rapports NASA, Objectifs et Réglages (gamification, sons), complication « série » sur la montre, conducteur de temps et tableau LAD (inspirés d’Open MCT), bandeau d’alarme.
